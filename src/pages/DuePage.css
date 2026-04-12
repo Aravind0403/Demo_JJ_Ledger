@@ -1,0 +1,137 @@
+.due-page {
+  padding: 1rem;
+  padding-bottom: 90px;
+}
+
+.due-header {
+  margin-bottom: 1rem;
+}
+
+.due-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.due-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.due-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.due-tabs::-webkit-scrollbar { display: none; }
+
+.due-tab {
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.due-tab-active {
+  background: rgba(239,68,68,0.15);
+  border-color: rgba(239,68,68,0.4);
+  color: #f87171;
+}
+
+.due-empty {
+  padding: 2.5rem 1rem;
+  border-radius: 16px;
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.due-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.due-card {
+  padding: 1rem;
+  border-radius: 14px;
+}
+
+.due-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.due-cust-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.due-cust-mobile {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.due-wa-btn {
+  background: rgba(37,211,102,0.12);
+  border: 1px solid rgba(37,211,102,0.3);
+  color: #25d366;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.due-date-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.due-overdue {
+  background: rgba(239,68,68,0.15);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+.due-upcoming {
+  background: rgba(251,191,36,0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(251,191,36,0.25);
+}
+
+.due-balances {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.due-bal-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  padding: 3px 0;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+}
+
+.due-neg {
+  color: #f43f5e;
+  font-weight: 700;
+}

@@ -1,175 +1,287 @@
-import React, { useState, useMemo } from 'react';
-import { Search, Plus, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useToast } from '../components/ui/Toast';
+import { Check, Search, ArrowLeft, Download, Pencil, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './Customers.css';
+import '../components/TransactionPopup.css';
 
-const n   = (v) => parseFloat(v || 0);
-const fmt = (v) => Math.abs(n(v)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtG = (v) => Math.abs(n(v)).toFixed(3);
 
-function CustomerRow({ customer }) {
-  const [open, setOpen] = useState(false);
+// ── Edit Modal ────────────────────────────────────────────────────────────────
+const EditCustomerModal = ({ customer, onSave, onClose }) => {
+    const [name, setName]     = useState(customer.name);
+    const [mobile, setMobile] = useState(customer.mobile);
+    const [mobile2, setMobile2] = useState(customer.mobile2 || '');
+    const [errors, setErrors] = useState({});
 
-  const chips = [];
-  if (Math.abs(n(customer.retailCash)) > 0.001 || Math.abs(n(customer.retailGold)) > 0.0001) chips.push('RETAIL');
-  if (Math.abs(n(customer.silverCash)) > 0.001 || Math.abs(n(customer.silverSilver)) > 0.0001) chips.push('SILVER');
-  if (Math.abs(n(customer.chitCash)) > 0.001) chips.push('CHIT');
+    const handleSave = () => {
+        const errs = {};
+        if (!name.trim()) errs.name = 'Name is required';
+        if (!mobile || mobile.length !== 10) errs.mobile = 'Valid 10-digit mobile required';
+        if (mobile2 && mobile2.length !== 10) errs.mobile2 = 'Must be 10 digits';
+        if (Object.keys(errs).length) return setErrors(errs);
+        onSave({ name: name.trim(), mobile, mobile2: mobile2 || null });
+    };
 
-  const balances = [
-    { label: 'Retail Cash',   value: customer.retailCash,   isGrams: false, show: Math.abs(n(customer.retailCash))   > 0.001  },
-    { label: 'Retail Gold',   value: customer.retailGold,   isGrams: true,  show: Math.abs(n(customer.retailGold))   > 0.0001 },
-    { label: 'Silver Cash',   value: customer.silverCash,   isGrams: false, show: Math.abs(n(customer.silverCash))   > 0.001  },
-    { label: 'Silver (grams)',value: customer.silverSilver, isGrams: true,  show: Math.abs(n(customer.silverSilver)) > 0.0001 },
-    { label: 'Chit Cash',     value: customer.chitCash,     isGrams: false, show: Math.abs(n(customer.chitCash))     > 0.001  },
-  ].filter(b => b.show);
+    return (
+        <div className="popup-overlay animate-fade-in" style={{ zIndex: 1050, alignItems: 'center' }}>
+            <div className="popup-content" style={{ maxWidth: '400px', borderRadius: '20px', width: '92%' }}>
+                {/* Header */}
+                <div className="popup-header">
+                    <div>
+                        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Edit Customer</h3>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Update name or contact numbers</p>
+                    </div>
+                    <button className="cust-back-btn" onClick={onClose} style={{ width: 32, height: 32 }}><X size={16} /></button>
+                </div>
 
-  return (
-    <div className="customer-row glass-panel" onClick={() => setOpen(o => !o)}>
-      <div className="customer-row-header">
-        <div className="customer-info">
-          <span className="customer-name">{customer.name}</span>
-          {customer.mobile && <span className="customer-mobile">📞 {customer.mobile}</span>}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div className="customer-chips">
-            {chips.map(c => (
-              <span key={c} className={`cat-chip chip-${c.toLowerCase()}`}>{c}</span>
-            ))}
-            {chips.length === 0 && (
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No balance</span>
-            )}
-          </div>
-          <ChevronDown size={16} className={`chevron-icon ${open ? 'chevron-open' : ''}`} />
-        </div>
-      </div>
+                {/* Body */}
+                <div className="popup-body" style={{ gap: '1.1rem', padding: '1.4rem 1.5rem' }}>
+                    <div className="edit-field-group">
+                        <label className="edit-field-label">Customer Name</label>
+                        <input
+                            className="edit-field-input"
+                            type="text"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            autoFocus
+                            placeholder="Full name"
+                        />
+                        {errors.name && <span className="cust-error">{errors.name}</span>}
+                    </div>
+                    <div className="edit-field-group">
+                        <label className="edit-field-label">Primary Mobile</label>
+                        <input
+                            className="edit-field-input"
+                            type="tel"
+                            value={mobile}
+                            onChange={e => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                            inputMode="numeric"
+                            placeholder="10-digit number"
+                        />
+                        {errors.mobile && <span className="cust-error">{errors.mobile}</span>}
+                    </div>
+                    <div className="edit-field-group">
+                        <label className="edit-field-label">
+                            Secondary Mobile
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: '0.4rem', fontSize: '0.7rem' }}>optional</span>
+                        </label>
+                        <input
+                            className="edit-field-input"
+                            type="tel"
+                            value={mobile2}
+                            placeholder="Alternate number"
+                            onChange={e => setMobile2(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                            inputMode="numeric"
+                        />
+                        {errors.mobile2 && <span className="cust-error">{errors.mobile2}</span>}
+                    </div>
+                </div>
 
-      {open && (
-        <div className="customer-expand">
-          {balances.length === 0 ? (
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '4px 0' }}>
-              All balances are zero
+                {/* Footer */}
+                <div className="popup-footer">
+                    <button className="btn-cancel" onClick={onClose}>Cancel</button>
+                    <button className="btn-save" onClick={handleSave}>
+                        <Check size={16} /> Save Changes
+                    </button>
+                </div>
             </div>
-          ) : (
-            balances.map(b => (
-              <div key={b.label} className="balance-row">
-                <span className="balance-label">{b.label}</span>
-                <span className={n(b.value) >= 0 ? 'balance-positive' : 'balance-negative'}>
-                  {n(b.value) >= 0 ? '+' : '-'}
-                  {b.isGrams ? `${fmtG(b.value)}g` : `₹${fmt(b.value)}`}
-                  {!b.isGrams && ' ' + (n(b.value) >= 0 ? 'CR' : 'DR')}
-                </span>
-              </div>
-            ))
-          )}
-          {customer.dueDate && (
-            <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#fbbf24' }}>
-              📅 Due date: {customer.dueDate}
-            </div>
-          )}
         </div>
-      )}
-    </div>
-  );
-}
-
-function AddCustomerModal({ onClose, onAdd }) {
-  const [name, setName] = useState('');
-  const [mobile, setMobile] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    onAdd({ name: name.trim(), mobile: mobile.trim() });
-    onClose();
-  };
-
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-sheet slide-up">
-        <div className="modal-handle" />
-        <h2 className="modal-title">Add Customer</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-field">
-            <label>Name *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Customer or business name"
-              autoFocus
-            />
-          </div>
-          <div className="form-field">
-            <label>Mobile (optional)</label>
-            <input
-              type="tel"
-              value={mobile}
-              onChange={e => setMobile(e.target.value)}
-              placeholder="10-digit mobile number"
-              maxLength={10}
-            />
-          </div>
-          <div className="modal-actions">
-            <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary" disabled={!name.trim()}>
-              Add Customer
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-export default function Customers() {
-  const { customers, addCustomer } = useAppContext();
-  const [query, setQuery] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
-
-  const filtered = useMemo(() => {
-    if (!query.trim()) return customers;
-    const q = query.toLowerCase();
-    return customers.filter(c =>
-      c.name.toLowerCase().includes(q) ||
-      (c.mobile && c.mobile.includes(q))
     );
-  }, [customers, query]);
+};
 
-  return (
-    <div className="customers-page animate-fade-in">
-      <div className="customers-header">
-        <h2 className="customers-title">Customers</h2>
-        <button className="add-customer-btn" onClick={() => setShowAdd(true)}>
-          <Plus size={15} /> Add
-        </button>
-      </div>
+const fmt  = (v) => parseFloat(v || 0).toFixed(2);
+const fmtG = (v) => parseFloat(v || 0).toFixed(3);
 
-      <div className="search-bar">
-        <Search size={16} className="search-icon" />
-        <input
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search by name or mobile…"
-        />
-      </div>
+// ── Main Page ─────────────────────────────────────────────────────────────────
+const Customers = () => {
+    const { customers, addCustomer, updateCustomer, getCustomerByMobile } = useAppContext();
+    const { toast } = useToast();
+    const navigate = useNavigate();
 
-      <div className="customer-list">
-        {filtered.length === 0 ? (
-          <div className="no-results">
-            {query ? 'No customers match your search.' : 'No customers yet.'}
-          </div>
-        ) : (
-          filtered.map(c => <CustomerRow key={c.id} customer={c} />)
-        )}
-      </div>
+    // Add form
+    const [name, setName] = useState('');
+    const [mobile, setMobile] = useState('');
+    const [errors, setErrors] = useState({});
 
-      {showAdd && (
-        <AddCustomerModal
-          onClose={() => setShowAdd(false)}
-          onAdd={addCustomer}
-        />
-      )}
-    </div>
-  );
-}
+    // Search & edit
+    const [searchQuery, setSearchQuery] = useState('');
+    const [editCustomer, setEditCustomer] = useState(null);
+
+    const handleMobileChange = (e) => {
+        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+        setMobile(val);
+        if (val && val.length !== 10) {
+            setErrors(prev => ({ ...prev, mobile: 'Must be 10 digits' }));
+        } else {
+            setErrors(prev => { const n = { ...prev }; delete n.mobile; return n; });
+        }
+    };
+
+    const handleSave = () => {
+        const errs = {};
+        if (!name.trim()) errs.name = 'Customer name is required';
+        if (!mobile) errs.mobile = 'Mobile number is required';
+        else if (mobile.length !== 10) errs.mobile = 'Must be 10 digits';
+        if (Object.keys(errs).length) { setErrors(errs); return toast.error('Fix errors before saving.'); }
+
+        if (getCustomerByMobile(mobile)) {
+            setErrors({ mobile: 'Mobile number already exists' });
+            return toast.warning('Duplicate mobile number.');
+        }
+
+        addCustomer({ name: name.trim(), mobile, category: 'RETAIL', primary_category: 'CASH' });
+        toast.success(`${name.trim()} saved successfully!`);
+        setName(''); setMobile(''); setErrors({});
+    };
+
+    const handleEditSave = (id, updates) => {
+        updateCustomer(id, updates);
+        setEditCustomer(null);
+        toast.success('Customer updated.');
+    };
+
+    // ── Export ────────────────────────────────────────────────────────────────
+    const handleExport = () => {
+        toast.info('Export is disabled in this demo.');
+    };
+
+    // Only show results when there is a search query
+    const searchResults = searchQuery.trim()
+        ? customers.filter(c =>
+            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.mobile.includes(searchQuery)
+        )
+        : [];
+
+    return (
+        <div className="customers-container animate-fade-in" style={{ paddingBottom: '80px' }}>
+
+            {/* ── Header ── */}
+            <div className="cust-page-header">
+                <button className="cust-back-btn" onClick={() => navigate('/')}>
+                    <ArrowLeft size={18} />
+                </button>
+                <div style={{ flex: 1 }}>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Customer Management</h2>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        {customers.length} customer{customers.length !== 1 ? 's' : ''} registered
+                    </p>
+                </div>
+                <button className="cust-export-btn" onClick={handleExport} title="Export customers to Excel">
+                    <Download size={15} /> Export
+                </button>
+            </div>
+
+            {/* ── Add New Customer ── */}
+            <div className="cust-form-card">
+                <div className="cust-form-title">Add New Customer</div>
+                <div className="cust-form-body">
+                    <div className="amount-grid">
+                        <div className="form-group">
+                            <label>Mobile No</label>
+                            <input
+                                type="tel"
+                                placeholder="10-digit number"
+                                value={mobile}
+                                onChange={handleMobileChange}
+                                maxLength={10}
+                                inputMode="numeric"
+                            />
+                            {errors.mobile && <span className="cust-error">{errors.mobile}</span>}
+                        </div>
+                        <div className="form-group">
+                            <label>Customer Name</label>
+                            <input
+                                type="text"
+                                placeholder="Full name"
+                                value={name}
+                                onChange={e => {
+                                    setName(e.target.value);
+                                    if (e.target.value.trim()) setErrors(p => { const n = { ...p }; delete n.name; return n; });
+                                }}
+                                onKeyDown={e => e.key === 'Enter' && handleSave()}
+                            />
+                            {errors.name && <span className="cust-error">{errors.name}</span>}
+                        </div>
+                    </div>
+                </div>
+                <div className="cust-form-footer">
+                    <button className="btn-save" style={{ flex: 1 }} onClick={handleSave}>
+                        <Check size={18} /> Save Customer
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Search Customers ── */}
+            <div style={{ marginTop: '1.5rem' }}>
+                <div className="search-bar">
+                    <Search size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                    <input
+                        type="text"
+                        placeholder="Search by name or mobile..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex' }}
+                        >
+                            <X size={16} />
+                        </button>
+                    )}
+                </div>
+
+                {/* Results — only shown when typing */}
+                {searchQuery.trim() ? (
+                    <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {searchResults.length === 0 ? (
+                            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem', fontSize: '0.9rem' }}>
+                                No customers match "<strong>{searchQuery}</strong>"
+                            </div>
+                        ) : (
+                            <>
+                                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, margin: '0 0 0.25rem' }}>
+                                    {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                                </p>
+                                {searchResults.map(c => (
+                                    <div key={c.id} className="cust-list-item">
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 600, fontSize: '1rem' }}>{c.name}</div>
+                                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>
+                                                {c.mobile}{c.mobile2 ? ` · ${c.mobile2}` : ''}
+                                            </div>
+                                        </div>
+                                        <button
+                                            className="cust-edit-btn"
+                                            onClick={e => { e.stopPropagation(); setEditCustomer(c); }}
+                                            title="Edit customer"
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                    </div>
+                ) : (
+                    <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '1.25rem' }}>
+                        Type a name or mobile number to search
+                    </p>
+                )}
+            </div>
+
+            {/* ── Edit Modal ── */}
+            {editCustomer && (
+                <EditCustomerModal
+                    customer={editCustomer}
+                    onSave={(updates) => handleEditSave(editCustomer.id, updates)}
+                    onClose={() => setEditCustomer(null)}
+                />
+            )}
+        </div>
+    );
+};
+
+export default Customers;

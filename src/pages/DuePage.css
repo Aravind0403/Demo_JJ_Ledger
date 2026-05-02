@@ -1,137 +1,126 @@
-.due-page {
-  padding: 1rem;
-  padding-bottom: 90px;
+/* DuePage.css */
+
+.due-container {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0 1rem;
+    gap: 1rem;
 }
 
 .due-header {
-  margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
 }
 
-.due-title {
-  font-size: 1.2rem;
-  font-weight: 700;
+.due-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
-.due-sub {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 2px;
+.due-header p {
+    margin: 4px 0 0 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
 }
 
-.due-tabs {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.due-tabs::-webkit-scrollbar { display: none; }
-
-.due-tab {
-  padding: 0.4rem 0.9rem;
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.04);
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all var(--transition-fast);
+.bulk-send-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.1rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(34, 197, 94, 0.3);
 }
 
-.due-tab-active {
-  background: rgba(239,68,68,0.15);
-  border-color: rgba(239,68,68,0.4);
-  color: #f87171;
+.bulk-send-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(34, 197, 94, 0.45);
 }
 
-.due-empty {
-  padding: 2.5rem 1rem;
-  border-radius: 16px;
-  text-align: center;
-  margin-top: 1rem;
+.bulk-send-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
-.due-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.due-table th,
+.due-table td {
+    vertical-align: middle;
 }
 
-.due-card {
-  padding: 1rem;
-  border-radius: 14px;
-}
-
-.due-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8px;
-}
-
-.due-cust-name {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.due-cust-mobile {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
-.due-wa-btn {
-  background: rgba(37,211,102,0.12);
-  border: 1px solid rgba(37,211,102,0.3);
-  color: #25d366;
-  padding: 0.4rem 0.85rem;
-  border-radius: 8px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.due-date-chip {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.due-overdue {
-  background: rgba(239,68,68,0.15);
-  color: #f87171;
-  border: 1px solid rgba(239,68,68,0.3);
-}
-
-.due-upcoming {
-  background: rgba(251,191,36,0.1);
-  color: #fbbf24;
-  border: 1px solid rgba(251,191,36,0.25);
+.row-excluded {
+    opacity: 0.4;
 }
 
 .due-balances {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
 }
 
-.due-bal-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.82rem;
-  padding: 3px 0;
-  border-top: 1px solid rgba(255,255,255,0.04);
-  color: var(--text-secondary);
+.bal-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
 }
 
-.due-neg {
-  color: #f43f5e;
-  font-weight: 700;
+.overdue-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+}
+
+.status-yellow {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fcd34d;
+}
+
+.status-red {
+    background: rgba(244, 63, 94, 0.18);
+    color: #f87171;
+}
+
+.wa-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+    text-decoration: none;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.wa-icon-btn:hover {
+    transform: scale(1.12);
+    background: rgba(34, 197, 94, 0.25);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
+}
+
+.wa-icon-btn.disabled {
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    border-color: rgba(255, 255, 255, 0.06);
 }

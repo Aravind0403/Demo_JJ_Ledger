@@ -5,8 +5,8 @@ import AppLayout from './layouts/AppLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Customers from './pages/Customers';
-import AddTransaction from './pages/AddTransaction';
-import Ledger from './pages/Ledger';
+import AddTransactionPage from './pages/AddTransactionPage';
+import Transactions from './pages/Transactions';
 import DuePage from './pages/DuePage';
 
 const ProtectedLayout = () => {
@@ -30,8 +30,8 @@ export default function App() {
           <Route element={<ProtectedLayout />}>
             <Route path="/dashboard"    element={<Dashboard />} />
             <Route path="/customers"    element={<Customers />} />
-            <Route path="/transactions" element={<AddTransaction />} />
-            <Route path="/ledger"       element={<Ledger />} />
+            <Route path="/transactions" element={<AddTransactionPage />} />
+            <Route path="/ledger"       element={<Transactions />} />
             <Route path="/due"          element={<DuePage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -5,6 +5,24 @@ import { useToast } from '../components/ui/Toast';
 const AppContext = createContext(null);
 export const useAppContext = () => useContext(AppContext);
 
+export const getCatBalKey = (category, type) => {
+    if (category === 'RETAIL') {
+        if (type === 'CASH') return 'retailCash';
+        if (type === 'GOLD') return 'retailGold';
+        return null;
+    }
+    if (category === 'SILVER') {
+        if (type === 'CASH')   return 'silverCash';
+        if (type === 'SILVER') return 'silverSilver';
+        return null;
+    }
+    if (category === 'CHIT') {
+        if (type === 'CASH') return 'chitCash';
+        return null;
+    }
+    return null;
+};
+
 const LS_CUSTOMERS    = 'demo_customers';
 const LS_TRANSACTIONS = 'demo_transactions';
 const LS_AUTH         = 'demo_authed';
@@ -28,8 +46,12 @@ export function AppProvider({ children }) {
     loadOrSeed(LS_TRANSACTIONS, () => seed.transactions)
   );
   const [authed, setAuthed] = useState(() =>
-    localStorage.getItem(LS_AUTH) === 'true'
+    localStorage.getItem(LS_AUTH) !== null
   );
+  const [authSession, setAuthSession] = useState(() => {
+    const raw = localStorage.getItem(LS_AUTH);
+    return raw ? JSON.parse(raw) : null;
+  });
 
   const persist = (custs, txs) => {
     localStorage.setItem(LS_CUSTOMERS, JSON.stringify(custs));
@@ -37,9 +59,16 @@ export function AppProvider({ children }) {
   };
 
   // ── Auth ────────────────────────────────────────────────────────────────
-  const login = useCallback((password) => {
-    if (password === 'demo123') {
-      localStorage.setItem(LS_AUTH, 'true');
+  const login = useCallback((role, password) => {
+    const passcodes = {
+      owner: 'owner123',
+      staff: 'staff123',
+      view: 'view123'
+    };
+    if (passcodes[role] && password === passcodes[role]) {
+      const sessionData = { role };
+      localStorage.setItem(LS_AUTH, JSON.stringify(sessionData));
+      setAuthSession(sessionData);
       setAuthed(true);
       return true;
     }
@@ -47,7 +76,8 @@ export function AppProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.clear();
+    localStorage.removeItem(LS_AUTH);
+    setAuthSession(null);
     setAuthed(false);
   }, []);
 
@@ -55,6 +85,7 @@ export function AppProvider({ children }) {
   const addCustomer = useCallback((data) => {
     const c = {
       id: `c${Date.now()}`,
+      due_date: data.due_date || null,
       retailCash: 0,
       retailGold: 0,
       silverCash: 0,
@@ -73,6 +104,15 @@ export function AppProvider({ children }) {
   const getCustomer = useCallback((id) =>
     customers.find(c => c.id === id),
   [customers]);
+
+  const updateCustomerDueDate = useCallback((id, dueDate) => {
+    const custs = customers.map(c => {
+      if (c.id !== id) return c;
+      return { ...c, due_date: dueDate };
+    });
+    setCustomers(custs);
+    persist(custs, transactions);
+  }, [customers, transactions]);
 
   // ── Transactions ────────────────────────────────────────────────────────
   const addTransaction = useCallback((txData) => {
@@ -132,9 +172,11 @@ export function AppProvider({ children }) {
   const value = {
     authed, login, logout,
     customers, transactions,
-    addCustomer, getCustomer,
+    addCustomer, getCustomer, updateCustomerDueDate,
     addTransaction, deleteTransaction,
     MAX_TX,
+    authSession,
+    chitSchemes: ['CHIT', 'DIWALI FUND', 'GOLD SCHEME', 'SILVER SCHEME', 'MONTHLY SCHEME']
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

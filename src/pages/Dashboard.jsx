@@ -43,7 +43,7 @@ const Ticker = ({ totalCash, totalGold, totalSilver }) => {
         { icon: '💵', label: 'Cash',         value: `${cashSign}₹${fmt(Math.abs(totalCash))}`, color: cashColor },
         { icon: '🥇', label: 'Gold',         value: `${fmtG(totalGold)}g`,                     color: '#fbbf24' },
         { icon: '🥈', label: 'Silver',       value: `${fmtG(totalSilver)}g`,                   color: '#94a3b8' },
-        { icon: '📊', label: 'JJ Ledger Pro', value: '',                                        color: '#6366f1' },
+        { icon: '📊', label: 'Demo Ledger', value: '',                                        color: '#6366f1' },
     ];
     const allItems = [...items, ...items, ...items];
 

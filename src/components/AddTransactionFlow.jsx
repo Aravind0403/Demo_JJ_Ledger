@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAppContext, getCatBalKey } from '../context/AppContext';
 import ReceiptModal from './ReceiptModal';
-import { compressImage, uploadToCloudinary } from '../utils/imageUtils';
+
 import './TransactionPopup.css';
 import './AddTransactionFlow.css';
 
@@ -198,9 +198,12 @@ const AddTransactionFlow = ({ onClose, presetCustomerId = null }) => {
         if (!file) return;
         setIsUploading(true);
         try {
-            const blob = await compressImage(file);
-            const data = await uploadToCloudinary(blob);
-            setImages(prev => [...prev, data]);
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const dataUrl = event.target.result;
+                setImages(prev => [...prev, { secure_url: dataUrl }]);
+            };
+            reader.readAsDataURL(file);
         } catch (err) {
             alert('Upload failed: ' + err.message);
         } finally {

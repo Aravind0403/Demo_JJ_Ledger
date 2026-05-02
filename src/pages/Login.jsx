@@ -7,9 +7,9 @@ import './Login.css';
 // These map each role to a fixed Supabase Auth user. Passcodes the shop uses
 // are stored as hashes in the organizations table and managed from Settings.
 const ROLE_EMAIL = {
-    owner: 'owner@jjledger.com',
-    staff: 'staff@jjledger.com',
-    view:  'view@jjledger.com',
+    owner: 'owner@demoledger.com',
+    staff: 'staff@demoledger.com',
+    view:  'view@demoledger.com',
 };
 const ROLE_PASS = {
     owner: 'owner123',
@@ -85,23 +85,26 @@ const Login = () => {
                         <Lock size={32} className="text-blue" />
                     </div>
                     <h2>JJ Jewellers</h2>
-                    <p>JJ Ledger Pro</p>
+                    <p>Demo Ledger</p>
                 </div>
 
                 {/* Step 1: Role Selection */}
                 {!selectedRole ? (
-                    <div className="login-roles">
-                        {Object.entries(ROLE_CONFIG).map(([role, config]) => (
-                            <button
-                                key={role}
-                                className={`role-btn role-${config.accent}`}
-                                onClick={() => handleRoleSelect(role)}
-                            >
-                                <span className="role-icon">{config.icon}</span>
-                                <span className="role-label">{config.label}</span>
-                            </button>
-                        ))}
-                    </div>
+                    <>
+                        <div className="login-step-label">Select your role to continue</div>
+                        <div className="role-grid">
+                            {Object.entries(ROLE_CONFIG).map(([role, config]) => (
+                                <button
+                                    key={role}
+                                    className={`role-tile role-tile-${config.accent}`}
+                                    onClick={() => handleRoleSelect(role)}
+                                >
+                                    <span className="role-tile-icon">{config.icon}</span>
+                                    <span className="role-tile-label">{config.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </>
                 ) : (
                     /* Step 2: Passcode input */
                     <div className="login-step2 animate-slide-in">

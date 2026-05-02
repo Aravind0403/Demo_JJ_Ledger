@@ -203,7 +203,7 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
 
                         <div style={{ textAlign: 'center', borderTop: '2px dashed rgba(255,255,255,0.1)', paddingTop: '10px', marginTop: '10px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                             Thank you for your business<br />
-                            JJ Jewellers • JJ Ledger Pro
+                            JJ Jewellers • Demo Ledger
                         </div>
                     </div>
                 </div>

@@ -28,7 +28,7 @@ const AppLayout = () => {
                 <div className="header-left">
                     <Menu className="header-icon" size={24} onClick={toggleMenu} />
                     <Link to="/" style={{ textDecoration: 'none' }}>
-                        <h1 className="header-title">JJ Ledger Pro</h1>
+                        <h1 className="header-title">Demo Ledger</h1>
                     </Link>
                 </div>
                 <div className="header-right" style={{ position: 'relative' }}>

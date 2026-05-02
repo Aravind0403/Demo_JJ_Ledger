@@ -84,7 +84,7 @@ const genWhatsApp = (customer) => {
     const due = customer.due_date
         ? new Date(customer.due_date).toLocaleDateString('en-IN')
         : 'N/A';
-    const text = `Dear ${customer.name},\nYour outstanding balance at JJ Jewellers: ${bal}.\nDue Date: ${due}\n— JJ Jewellers`;
+    const text = `Dear ${customer.name},\nYour outstanding balance at Demo Ledger: ${bal}.\nDue Date: ${due}\n— Demo Ledger`;
     let mob = customer.mobile;
     if (!mob.startsWith('91')) mob = '91' + mob;
     return `https://wa.me/${mob}?text=${encodeURIComponent(text)}`;

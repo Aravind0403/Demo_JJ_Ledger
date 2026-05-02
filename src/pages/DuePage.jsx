@@ -156,7 +156,7 @@ const DuePage = () => {
         addG(c.silverSilver, 'Silver');
         add(c.chitCash,      'Chit');
         const bals = parts.join('\n') || 'outstanding amount';
-        const text = `Dear customer,\nThis is a gentle reminder that your outstanding balance with us:\n${bals}.\nKindly settle the same at your earliest convenience.\n— JJ Jewellers`;
+        const text = `Dear customer,\nThis is a gentle reminder that your outstanding balance with us:\n${bals}.\nKindly settle the same at your earliest convenience.\n— Demo Ledger`;
         let mobile = (c.mobile || '').replace(/\D/g, '');
         if (!mobile.startsWith('91')) mobile = '91' + mobile;
         return `https://wa.me/${mobile}?text=${encodeURIComponent(text)}`;

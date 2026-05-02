@@ -84,8 +84,7 @@ const Login = () => {
                     <div className="login-icon-wrap">
                         <Lock size={32} className="text-blue" />
                     </div>
-                    <h2>JJ Jewellers</h2>
-                    <p>Demo Ledger</p>
+                    <h2>Demo Ledger</h2>
                 </div>
 
                 {/* Step 1: Role Selection */}

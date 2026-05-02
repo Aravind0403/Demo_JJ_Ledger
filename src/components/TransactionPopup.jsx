@@ -77,7 +77,7 @@ const TransactionPopup = ({ presetCustomerId = null, onClose }) => {
 
         const dueDateStr = customer.due_date ? new Date(customer.due_date).toLocaleDateString() : 'N/A';
 
-        const text = `Dear ${customer.name},\nThis is a gentle reminder that your outstanding balance with JJ Jewellers is: ${balStr}.\nKindly settle the same at your earliest convenience.\nDue Date: ${dueDateStr}\n— JJ Jewellers`;
+        const text = `Dear ${customer.name},\nThis is a gentle reminder that your outstanding balance with Demo Ledger is: ${balStr}.\nKindly settle the same at your earliest convenience.\nDue Date: ${dueDateStr}\n— Demo Ledger`;
 
         let mobile = customer.mobile;
         if (!mobile.startsWith('91')) mobile = '91' + mobile;

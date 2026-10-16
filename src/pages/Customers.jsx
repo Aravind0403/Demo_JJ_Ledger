@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { useAppContext } from '../context/AppContext';
-import { useToast } from '../components/ui/Toast';
+import { useAppContext } from '../context/appState';
+import { useToast } from '../components/ui/toastContext';
 import { Check, Search, ArrowLeft, Download, Pencil, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import './Customers.css';
 import '../components/TransactionPopup.css';
 
@@ -95,7 +97,7 @@ const fmtG = (v) => parseFloat(v || 0).toFixed(3);
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const Customers = () => {
-    const { customers, addCustomer, updateCustomer, getCustomerByMobile } = useAppContext();
+    const { customers, addCustomer, updateCustomer, getCustomerByMobile, authSession } = useAppContext();
     const { toast } = useToast();
     const navigate = useNavigate();
 
@@ -103,6 +105,7 @@ const Customers = () => {
     const [name, setName] = useState('');
     const [mobile, setMobile] = useState('');
     const [errors, setErrors] = useState({});
+    const [saving, setSaving] = useState(false);
 
     // Search & edit
     const [searchQuery, setSearchQuery] = useState('');
@@ -118,7 +121,8 @@ const Customers = () => {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (saving) return;
         const errs = {};
         if (!name.trim()) errs.name = 'Customer name is required';
         if (!mobile) errs.mobile = 'Mobile number is required';
@@ -130,20 +134,43 @@ const Customers = () => {
             return toast.warning('Duplicate mobile number.');
         }
 
-        addCustomer({ name: name.trim(), mobile, category: 'RETAIL', primary_category: 'CASH' });
-        toast.success(`${name.trim()} saved successfully!`);
-        setName(''); setMobile(''); setErrors({});
+        setSaving(true);
+        try {
+            await addCustomer({ name: name.trim(), mobile, category: 'RETAIL', primary_category: 'CASH' });
+            toast.success(`${name.trim()} saved successfully!`);
+            setName(''); setMobile(''); setErrors({});
+        } catch (error) { toast.error('Customer not saved: ' + error.message); }
+        finally { setSaving(false); }
     };
 
-    const handleEditSave = (id, updates) => {
-        updateCustomer(id, updates);
-        setEditCustomer(null);
-        toast.success('Customer updated.');
+    const handleEditSave = async (id, updates) => {
+        try {
+            await updateCustomer(id, updates);
+            setEditCustomer(null);
+            toast.success('Customer updated.');
+        } catch (error) { toast.error('Update failed: ' + error.message); }
     };
 
     // ── Export ────────────────────────────────────────────────────────────────
     const handleExport = () => {
-        toast.info('Export is disabled in this demo.');
+        if (customers.length === 0) return toast.info('No customers to export.');
+        const rows = customers.map(c => ({
+            'Name': c.name,
+            'Mobile': c.mobile,
+            'Cash Balance (₹)': fmt(c.cashBalance),
+            'Gold Balance (g)': fmtG(c.goldBalance),
+            'Silver Balance (g)': fmtG(c.silverBalance),
+            'Due Date': c.due_date ? new Date(c.due_date).toLocaleDateString() : '',
+            'Registered On': c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '',
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{ wch: 24 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 16 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Customers');
+        const today = new Date().toISOString().slice(0, 10);
+        const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        saveAs(new Blob([buf], { type: 'application/octet-stream' }), `JJ Ledger_Customers_${today}.xlsx`);
+        toast.success('Exported successfully.');
     };
 
     // Only show results when there is a search query
@@ -207,7 +234,7 @@ const Customers = () => {
                     </div>
                 </div>
                 <div className="cust-form-footer">
-                    <button className="btn-save" style={{ flex: 1 }} onClick={handleSave}>
+                    <button className="btn-save" style={{ flex: 1 }} onClick={handleSave} disabled={saving || authSession?.role === 'view'}>
                         <Check size={18} /> Save Customer
                     </button>
                 </div>
@@ -257,6 +284,7 @@ const Customers = () => {
                                             className="cust-edit-btn"
                                             onClick={e => { e.stopPropagation(); setEditCustomer(c); }}
                                             title="Edit customer"
+                                            disabled={authSession?.role === 'view'}
                                         >
                                             <Pencil size={14} />
                                         </button>

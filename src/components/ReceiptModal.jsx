@@ -1,3 +1,5 @@
+import { resolveReceiptUrl } from '../lib/receiptImages';
+import ReceiptImage from './ReceiptImage';
 import React, { useRef, useState } from 'react';
 
 const fmt = (v) => parseFloat(v || 0).toFixed(2);
@@ -18,12 +20,11 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
         const amt   = isCash
             ? `₹${fmt(isGot ? transaction.jama : transaction.nave)}`
             : `${fmtG(isGot ? transaction.jama : transaction.nave)}g`;
-        const cat = [transaction.category, transaction.sub_type].filter(Boolean).join(' · ');
 
-        let msg = `Date: ${transaction.date}${transaction.time ? ` ${transaction.time.substring(0,5)}` : ''}\n`;
+        let msg = `Bill: ${transaction.bill_number || "—"}\nDate: ${transaction.date}${transaction.time ? ` ${transaction.time.substring(0,5)}` : ''}\n`;
         msg += `Amount ${isGot ? 'Received ✅' : 'Given 🔴'}: *${amt}*\n`;
         if (transaction.description) msg += `Note: ${transaction.description}\n`;
-        msg += `\n_Demo Ledger_`;
+        msg += `\n_JJ Ledger Demo_`;
 
         // Open WhatsApp directly with customer's number
         const phone = customer.mobile?.replace(/\D/g, '');
@@ -39,17 +40,16 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
         const amt   = isCash
             ? `₹${fmt(isGot ? transaction.jama : transaction.nave)}`
             : `${fmtG(isGot ? transaction.jama : transaction.nave)}g`;
-        const cat = [transaction.category, transaction.sub_type].filter(Boolean).join(' · ');
-        let msg = `Date: ${transaction.date}${transaction.time ? ` ${transaction.time.substring(0,5)}` : ''}\nAmount ${isGot ? 'Received' : 'Given'}: ${amt}\n_Demo Ledger_`;
+        let msg = `Bill: ${transaction.bill_number || "—"}\nDate: ${transaction.date}${transaction.time ? ` ${transaction.time.substring(0,5)}` : ''}\nAmount ${isGot ? 'Received' : 'Given'}: ${amt}\n_JJ Ledger Demo_`;
         try {
-            const shareData = { title: 'Demo Ledger Receipt', text: msg };
+            const shareData = { title: 'JJ Ledger Demo Receipt', text: msg };
             if (transaction.images?.length > 0) {
                 try {
-                    const resp = await fetch(transaction.images[0].url);
+                    const resp = await fetch(await resolveReceiptUrl(transaction.images[0]));
                     const blob = await resp.blob();
                     const file = new File([blob], 'receipt.jpg', { type: blob.type });
                     if (navigator.canShare?.({ files: [file] })) shareData.files = [file];
-                } catch (_) { /* image fetch failed */ }
+                } catch { /* image fetch failed */ }
             }
             await navigator.share(shareData);
         } catch (err) {
@@ -63,7 +63,7 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
         printWindow.document.write(`
             <html>
             <head>
-                <title>Receipt - Demo Ledger</title>
+                <title>Receipt - JJ Ledger Demo</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
                     body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px; color: #1a1a1a; }
@@ -112,7 +112,7 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
                 <div ref={receiptRef}>
                     <div className="receipt" style={{ maxWidth: '350px', margin: '0 auto', border: '2px solid rgba(255,255,255,0.15)', padding: '20px', borderRadius: '12px', background: 'rgba(15,23,42,0.8)' }}>
                         <div style={{ textAlign: 'center', borderBottom: '2px dashed rgba(255,255,255,0.1)', paddingBottom: '12px', marginBottom: '12px' }}>
-                            <h2 style={{ fontSize: '1.3rem', letterSpacing: '1px', marginBottom: '2px', color: 'var(--accent-gold, #fbbf24)' }}>Demo Ledger</h2>
+                            <h2 style={{ fontSize: '1.3rem', letterSpacing: '1px', marginBottom: '2px', color: 'var(--accent-gold, #fbbf24)' }}>JJ Ledger Demo</h2>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Transaction Receipt</p>
                         </div>
 
@@ -122,8 +122,8 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '0.85rem' }}>
-                                <span style={{ color: 'var(--text-muted)' }}>Receipt #</span>
-                                <span style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.75rem' }}>{transaction.id?.slice(0, 8).toUpperCase()}</span>
+                                <span style={{ color: 'var(--text-muted)' }}>Bill Number</span>
+                                <span style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.75rem' }}>{transaction.bill_number || '—'}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '0.85rem' }}>
                                 <span style={{ color: 'var(--text-muted)' }}>Date & Time</span>
@@ -190,11 +190,11 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
                         {transaction.images?.length > 0 && (
                             <>
                                 <div style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', margin: '8px 0' }} />
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Receipt Photo{transaction.images.length > 1 ? 's' : ''}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Property Photo{transaction.images.length > 1 ? 's' : ''}</div>
                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                     {transaction.images.map((img, i) => (
-                                        <img key={i} src={img.url} alt={`receipt-${i+1}`}
-                                            onClick={() => setLightboxImg(img.url)}
+                                        <ReceiptImage key={i} image={img} alt={`receipt-${i+1}`}
+                                            onClick={() => setLightboxImg(img)}
                                             style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.12)' }} />
                                     ))}
                                 </div>
@@ -203,7 +203,7 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
 
                         <div style={{ textAlign: 'center', borderTop: '2px dashed rgba(255,255,255,0.1)', paddingTop: '10px', marginTop: '10px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                             Thank you for your business<br />
-                            Demo Ledger
+                            JJ Ledger Demo • JJ Ledger Demo
                         </div>
                     </div>
                 </div>
@@ -213,7 +213,7 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
                     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}
                         onClick={() => setLightboxImg(null)}>
                         <button onClick={() => setLightboxImg(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '50%', width: 36, height: 36, fontSize: '1.1rem', cursor: 'pointer' }}>✕</button>
-                        <img src={lightboxImg} alt="receipt" style={{ maxWidth: '92vw', maxHeight: '88vh', borderRadius: '10px', objectFit: 'contain' }} onClick={e => e.stopPropagation()} />
+                        <ReceiptImage image={lightboxImg} alt="receipt" style={{ maxWidth: '92vw', maxHeight: '88vh', borderRadius: '10px', objectFit: 'contain' }} onClick={e => e.stopPropagation()} />
                     </div>
                 )}
 

@@ -1,6 +1,7 @@
+import { useClock } from '../lib/useClock';
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext } from '../context/appState';
 import './Dashboard.css';
 
 const fmt  = (v) => parseFloat(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -8,31 +9,15 @@ const fmtG = (v) => parseFloat(v || 0).toFixed(3);
 const n    = (v) => parseFloat(v || 0);
 
 // Balance keys that are grams-based (not cash ₹)
-const GRAMS_BAL_KEYS = new Set(['retailGold', 'silverSilver']);
+const GRAMS_BAL_KEYS = new Set(['retailGold', 'bullionGold', 'bullionSilver', 'silverSilver']);
 
 // ── Key account definitions per KPI section ───────────────────────────────────
 // source:'bal' → read directly from customer[balKey]
 // source:'tx'  → aggregate jama−nave from transactions filtered by category+subType
 //                (used for RETAIL·METAL because getTxType returns 'CASH' for it,
 //                 so the grams net must come from transactions, not a balance field)
-const KEY_ACCOUNTS = {
-    retail: [
-        // Cash — customer balance field
-        { name: 'JJbn',      source: 'bal', balKey: 'retailCash', isGrams: false, label: 'Cash'  },
-        // Cash — read from retailCash balance field
-        { name: 'Chit gold', source: 'bal', balKey: 'retailCash', isGrams: false, label: 'Cash'  },
-        // Metal — aggregate from RETAIL·METAL transactions (grams)
-        { name: 'NS916',     source: 'tx', category: 'RETAIL', subType: 'METAL', isGrams: true, label: 'Metal' },
-        { name: 'JJbn',      source: 'tx', category: 'RETAIL', subType: 'METAL', isGrams: true, label: 'Metal' },
-        { name: 'NS76',      source: 'tx', category: 'RETAIL', subType: 'METAL', isGrams: true, label: 'Metal' },
-        { name: 'NS Silver', source: 'tx', category: 'RETAIL', subType: 'METAL', isGrams: true, label: 'Metal' },
-    ],
-    silver: [
-        { name: 'NS Silver', source: 'bal', balKey: 'silverSilver', isGrams: true,  label: 'Silver' },
-        { name: 'JJbn',      source: 'bal', balKey: 'silverCash',   isGrams: false, label: 'Cash'   },
-        { name: 'JJbn',      source: 'bal', balKey: 'silverSilver', isGrams: true,  label: 'Silver' },
-    ],
-};
+// Configure JJ Ledger key accounts after business-specific setup.
+const KEY_ACCOUNTS = { retail: [], bullion: [], silver: [] };
 
 /* ── Live Ticker ──────────────────────────────────────────────────────────── */
 const Ticker = ({ totalCash, totalGold, totalSilver }) => {
@@ -43,7 +28,7 @@ const Ticker = ({ totalCash, totalGold, totalSilver }) => {
         { icon: '💵', label: 'Cash',         value: `${cashSign}₹${fmt(Math.abs(totalCash))}`, color: cashColor },
         { icon: '🥇', label: 'Gold',         value: `${fmtG(totalGold)}g`,                     color: '#fbbf24' },
         { icon: '🥈', label: 'Silver',       value: `${fmtG(totalSilver)}g`,                   color: '#94a3b8' },
-        { icon: '📊', label: 'Demo Ledger', value: '',                                        color: '#6366f1' },
+        { icon: '📊', label: 'JJ Ledger Demo', value: '',                                        color: '#6366f1' },
     ];
     const allItems = [...items, ...items, ...items];
 
@@ -140,18 +125,20 @@ const Dashboard = () => {
     const { customers, transactions, authSession } = useAppContext();
 
     // Staff / View roles see only last-24h transactions (owner / super-admin see all)
+    const now = useClock();
     const isRestrictedView = authSession?.role === 'staff' || authSession?.role === 'view';
     const txFor24h = useMemo(() => {
         if (!isRestrictedView) return transactions;
-        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+        const cutoff = now - 24 * 60 * 60 * 1000;
         return transactions.filter(t => t.createdAt && t.createdAt >= cutoff);
-    }, [transactions, isRestrictedView]);
+    }, [transactions, isRestrictedView, now]);
 
     // Aggregate stats per category
     const stats = useMemo(() => {
         const mk = () => ({ got: 0, gave: 0 });
         const t = {
             retail:  { cash: mk(), gold: mk() },
+            bullion: { cash: mk(), gold: mk(), silver: mk() },
             silver:  { cash: mk(), silver: mk() },
             chit:    { cash: mk() },
         };
@@ -163,6 +150,9 @@ const Dashboard = () => {
         customers.forEach(c => {
             acc(t.retail.cash,    c.retailCash);
             acc(t.retail.gold,    c.retailGold);
+            acc(t.bullion.cash,   c.bullionCash);
+            acc(t.bullion.gold,   c.bullionGold);
+            acc(t.bullion.silver, c.bullionSilver);
             acc(t.silver.cash,    c.silverCash);
             acc(t.silver.silver,  c.silverSilver);
             acc(t.chit.cash,      c.chitCash);
@@ -174,9 +164,9 @@ const Dashboard = () => {
     const totals = useMemo(() => {
         let cash = 0, gold = 0, silver = 0;
         customers.forEach(c => {
-            cash   += n(c.retailCash) + n(c.silverCash) + n(c.chitCash);
-            gold   += n(c.retailGold);
-            silver += n(c.silverSilver);
+            cash   += n(c.retailCash) + n(c.bullionCash) + n(c.silverCash) + n(c.chitCash);
+            gold   += n(c.retailGold) + n(c.bullionGold);
+            silver += n(c.bullionSilver) + n(c.silverSilver);
         });
         return { cash, gold, silver };
     }, [customers]);
@@ -224,6 +214,7 @@ const Dashboard = () => {
                 .filter(Boolean);
         return {
             retail:  resolve('retail'),
+            bullion: resolve('bullion'),
             silver:  resolve('silver'),
         };
     }, [custNameMap, txSumMap]);
@@ -261,7 +252,17 @@ const Dashboard = () => {
                         ]}
                         accounts={keyAccountRows.retail}
                     />
-
+                    <KPICard
+                        cls="kpi-bullion"
+                        title="Bullion"
+                        emoji="🥇"
+                        subtypes={[
+                            { label: 'Cash',   slot: stats.bullion.cash,   isGrams: false },
+                            { label: 'Gold',   slot: stats.bullion.gold,   isGrams: true, metalColor: '#fbbf24' },
+                            { label: 'Silver', slot: stats.bullion.silver, isGrams: true, metalColor: '#94a3b8' },
+                        ]}
+                        accounts={keyAccountRows.bullion}
+                    />
                     <KPICard
                         cls="kpi-silver"
                         title="Silver"

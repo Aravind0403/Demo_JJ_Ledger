@@ -168,7 +168,10 @@
 }
 
 .kpi-retail::before  { background: var(--cat-retail); }
-
+.kpi-retail::after   { background: var(--cat-retail); }
+.kpi-bullion::before { background: var(--cat-bullion); }
+.kpi-bullion::after  { background: var(--cat-bullion); }
+.kpi-silver::before  { background: var(--cat-silver); }
 .kpi-silver::after   { background: var(--cat-silver); }
 .kpi-chit::before    { background: var(--cat-chit); }
 .kpi-chit::after     { background: var(--cat-chit); }

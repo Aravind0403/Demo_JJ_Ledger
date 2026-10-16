@@ -1,7 +1,10 @@
+import ReceiptImage from '../components/ReceiptImage';
 import React, { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ArrowLeft, CheckCircle2, ChevronRight, Camera, X } from 'lucide-react';
-import { useAppContext, getCatBalKey } from '../context/AppContext';
+import { useToast } from '../components/ui/toastContext';
+import { useAppContext, getCatBalKey } from '../context/appState';
+import { compressImage, saveLocalPhoto } from '../utils/imageUtils';
 import ReceiptModal from '../components/ReceiptModal';
 import '../components/TransactionPopup.css';
 import './AddTransactionPage.css';
@@ -12,6 +15,11 @@ const CATEGORIES = [
         key: 'RETAIL', label: 'Retail', emoji: '🏪',
         desc: 'Cash & metal transactions',
         color: '#6366f1', dim: 'rgba(99,102,241,0.15)', glow: 'rgba(99,102,241,0.35)',
+    },
+    {
+        key: 'BULLION', label: 'Bullion', emoji: '🥇',
+        desc: 'Gold & silver bullion trading',
+        color: '#f59e0b', dim: 'rgba(245,158,11,0.15)', glow: 'rgba(245,158,11,0.35)',
     },
     {
         key: 'SILVER', label: 'Silver', emoji: '🥈',
@@ -30,6 +38,11 @@ const SUBTYPES = {
     RETAIL: [
         { key: 'CASH',  label: 'Cash',  type: 'CASH',   unit: '₹',   isGrams: false },
         { key: 'METAL', label: 'Metal', type: 'GOLD',   unit: 'g',   isGrams: true, hasBill: true },
+    ],
+    BULLION: [
+        { key: 'CASH',   label: 'Cash',   type: 'CASH',   unit: '₹', isGrams: false },
+        { key: 'GOLD',   label: 'Gold',   type: 'GOLD',   unit: 'g', isGrams: true },
+        { key: 'SILVER', label: 'Silver', type: 'SILVER', unit: 'g', isGrams: true },
     ],
     SILVER: [
         { key: 'CASH',   label: 'Cash',   type: 'CASH',   unit: '₹', isGrams: false },
@@ -64,6 +77,8 @@ const fmtBal = (val, isGrams) =>
 const AddTransactionPage = () => {
     const { customers, transactions, chitSchemes, addTransaction, authSession } = useAppContext();
     const navigate = useNavigate();
+    const { toast } = useToast();
+    const pendingSave = useRef(null);
 
     const [step,     setStep]     = useState(1);   // 1 | 2 | 3
     const [category, setCategory] = useState(null);
@@ -77,6 +92,7 @@ const AddTransactionPage = () => {
     const [subType,     setSubType]     = useState('CASH');
     const [scheme,      setScheme]      = useState('');
     const [amount,      setAmount]      = useState('');
+    const [billNumber, setBillNumber] = useState('');
     const [billAmount,  setBillAmount]  = useState('');
     const [date,        setDate]        = useState(new Date().toISOString().split('T')[0]);
     const [dueDate,     setDueDate]     = useState('');
@@ -139,7 +155,7 @@ const AddTransactionPage = () => {
     };
 
     const resetForm = () => {
-        setOp('got'); setAmount(''); setBillAmount('');
+        setOp('got'); setAmount(''); setBillAmount(''); setBillNumber('');
         setDescription(''); setSaved(false); setSaving(false);
         setScheme(''); setImages([]); setDueDate('');
     };
@@ -149,12 +165,9 @@ const AddTransactionPage = () => {
         if (!file) return;
         setIsUploading(true);
         try {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const dataUrl = event.target.result;
-                setImages(prev => [...prev, { secure_url: dataUrl, url: dataUrl }]);
-            };
-            reader.readAsDataURL(file);
+            const compressed = await compressImage(file);
+            const uploaded   = await saveLocalPhoto(compressed);
+            setImages(prev => [...prev, uploaded]);
         } catch (err) {
             alert('Image upload failed: ' + err.message);
         } finally {
@@ -164,10 +177,10 @@ const AddTransactionPage = () => {
     };
 
     /* ── Save ── */
-    const canSave = n(amount) > 0 && (!isChit || scheme);
+    const canSave = n(amount) > 0 && (!isChit || scheme) && !isUploading;
 
-    const handleSave = () => {
-        if (!canSave) return;
+    const handleSave = async () => {
+        if (!canSave || saving || isUploading) return;
         setSaving(true);
 
         const val  = n(amount);
@@ -185,6 +198,7 @@ const AddTransactionPage = () => {
             nave,
             grams:       subCfg.isGrams ? val : 0,
             bill_amount: n(billAmount),
+            bill_number: billNumber.trim().toUpperCase() || null,
             date,
             time:        txTime,
             description,
@@ -194,26 +208,25 @@ const AddTransactionPage = () => {
             due_date:    dueDate || null,
         };
 
-        addTransaction(txData);
-
-        // Show receipt
-        setReceipt({
-            ...txData,
-            id:              `${now.getTime()}`,
-            currentBalance:  prevBalance,
-            newBalance:      newBalance,
-            isGrams:         subCfg.isGrams,
-            categoryLabel:   catCfg?.label,
-            subTypeLabel:    subCfg?.label,
-        });
-
-        setSaved(true);
-        resetForm();
-        setSaved(false);
+        try {
+            const fingerprint = JSON.stringify({ ...txData, time: undefined });
+            // Reuse the UUID when the same save is retried after a network error.
+            if (pendingSave.current?.fingerprint !== fingerprint) pendingSave.current = { fingerprint, id: crypto.randomUUID() };
+            const entry = await addTransaction({ ...txData, id: pendingSave.current.id });
+            setReceipt({ ...entry, isGrams: subCfg.isGrams, categoryLabel: catCfg?.label, subTypeLabel: subCfg?.label });
+            pendingSave.current = null;
+            resetForm();
+        } catch (error) {
+            toast.error('Transaction not confirmed: ' + error.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     /* ── Receipt close ── */
     const handleReceiptClose = () => setReceipt(null);
+
+    if (authSession?.role === 'view') return <div className="atp-page">Your account has read-only access.</div>;
 
     /* ── Step 1: Category ── */
     if (step === 1) return (
@@ -437,6 +450,14 @@ const AddTransactionPage = () => {
                     </div>
                 </div>
 
+                <div className="atp-form-section">
+                    <label htmlFor="transaction-bill-number" className="atp-label">Bill Number <span style={{fontWeight:400,textTransform:'none'}}>optional</span></label>
+                    <div className="atp-input-wrap">
+                        <input id="transaction-bill-number" type="text" maxLength={64} placeholder="Enter bill number (optional)"
+                            value={billNumber} onChange={e => setBillNumber(e.target.value)} style={{fontSize:'1rem',width:'100%',padding:12,color:'var(--text-primary)',background:'transparent',border:0}} />
+                    </div>
+                </div>
+
                 {/* Bill amount — only for RETAIL METAL */}
                 {subCfg?.hasBill && (
                     <div className="atp-form-section">
@@ -527,7 +548,7 @@ const AddTransactionPage = () => {
 
                 {/* Photos */}
                 <div className="atp-form-section">
-                    <label className="atp-label">Photos <span style={{ fontWeight: 400, textTransform: 'none' }}>optional</span></label>
+                    <label className="atp-label">Customer Property Photos <span style={{ fontWeight: 400, textTransform: 'none' }}>optional</span></label>
                     <input
                         type="file"
                         accept="image/*"
@@ -548,13 +569,13 @@ const AddTransactionPage = () => {
                         }}
                     >
                         <Camera size={16} />
-                        {isUploading ? 'Uploading...' : 'Add Photo'}
+                        {isUploading ? 'Uploading...' : 'Add Property Photo'}
                     </button>
                     {images.length > 0 && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
                             {images.map((img, i) => (
                                 <div key={i} style={{ position: 'relative', width: '72px', height: '72px' }}>
-                                    <img src={img.url} alt="receipt" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)' }} />
+                                    <ReceiptImage image={img} alt="Customer property" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)' }} />
                                     <button
                                         onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
                                         style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', border: 'none', borderRadius: '50%', width: '20px', height: '20px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}

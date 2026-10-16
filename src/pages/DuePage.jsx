@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext } from '../context/appState';
 import { Phone, CheckSquare, Square, AlertTriangle, Send, ArrowLeft, CalendarDays, User, X, Clock, Download } from 'lucide-react';
 import './DuePage.css';
 
@@ -26,10 +26,11 @@ const StatusBadge = ({ days }) => {
 // Fixed display order for category+type combinations — mirrors the Ledger tab order (CHIT excluded from Dashboard)
 const CAT_TYPE_ORDER = [
     'RETAIL|CASH', 'RETAIL|GOLD',
+    'BULLION|CASH', 'BULLION|GOLD', 'BULLION|SILVER',
     'SILVER|CASH',  'SILVER|SILVER',
 ];
 const catTypeLabel = (cat, type) => {
-    const c = { RETAIL:'Retail', SILVER:'Silver', CHIT:'Chit' };
+    const c = { RETAIL:'Retail', BULLION:'Bullion', SILVER:'Silver', CHIT:'Chit' };
     const t = { CASH:'Cash', GOLD:'Gold', SILVER:'Silver' };
     return `${c[cat] || cat} ${t[type] || type}`;
 };
@@ -70,10 +71,11 @@ const DuePage = () => {
     // Returns the relevant balance fields for a given category tab
     const catBals = (c, cat = 'ALL') => {
         if (cat === 'RETAIL')  return [n(c.retailCash),  n(c.retailGold)];
+        if (cat === 'BULLION') return [n(c.bullionCash), n(c.bullionGold), n(c.bullionSilver)];
         if (cat === 'SILVER')  return [n(c.silverCash),  n(c.silverSilver)];
         if (cat === 'CHIT')    return [n(c.chitCash)];
-        return [n(c.retailCash), n(c.retailGold),
-                n(c.silverCash), n(c.silverSilver), n(c.chitCash)];
+        return [n(c.retailCash), n(c.retailGold), n(c.bullionCash), n(c.bullionGold),
+                n(c.bullionSilver), n(c.silverCash), n(c.silverSilver), n(c.chitCash)];
     };
 
     // Global list — filtered by catTab (category) then by direction (YOU_GOT / YOU_GAVE)
@@ -120,6 +122,9 @@ const DuePage = () => {
                         // Sub-tab filters per category
                         if (catTab === 'RETAIL'  && dashSubTab === 'CASH'   && type !== 'CASH')   return null;
                         if (catTab === 'RETAIL'  && dashSubTab === 'METAL'  && type !== 'GOLD')   return null;
+                        if (catTab === 'BULLION' && dashSubTab === 'CASH'   && type !== 'CASH')   return null;
+                        if (catTab === 'BULLION' && dashSubTab === 'GOLD'   && type !== 'GOLD')   return null;
+                        if (catTab === 'BULLION' && dashSubTab === 'SILVER' && type !== 'SILVER') return null;
                         if (catTab === 'SILVER'  && dashSubTab === 'CASH'   && type !== 'CASH')   return null;
                         if (catTab === 'SILVER'  && dashSubTab === 'SILVER' && type !== 'SILVER') return null;
                         const { jama = 0, nave = 0 } = catData[key] || {};
@@ -144,19 +149,40 @@ const DuePage = () => {
     const selectedCustomer = custFilter ? customers.find(c => c.id === custFilter.id) : null;
 
     // Shared WhatsApp URL builder — used by Customer view, Global view, and Dashboard.
-    // Shows all non-zero balances with CR/DR direction so the customer sees their exact position.
     const getWhatsAppUrl = (c) => {
+        const dir = (v) => v >= 0 ? 'jama' : 'nave (balance)';
         const parts = [];
-        // Use category-specific fields so retail cash and silver cash are NOT combined
-        const add = (val, label) => { const v = n(val); if (Math.abs(v) > 0.001) parts.push(`${label}: ₹${fmt(Math.abs(v))} ${v >= 0 ? 'CR' : 'DR'}`); };
-        const addG = (val, label) => { const v = n(val); if (Math.abs(v) > 0.0001) parts.push(`${label}: ${fmtG(Math.abs(v))}g ${v >= 0 ? 'CR' : 'DR'}`); };
+        const add  = (val, label) => { const v = n(val); if (Math.abs(v) > 0.001)  parts.push(`${label}: ₹${fmt(Math.abs(v))} ${dir(v)}`); };
+        const addG = (val, label) => { const v = n(val); if (Math.abs(v) > 0.0001) parts.push(`${label}: ${fmtG(Math.abs(v))}g ${dir(v)}`); };
         add(c.retailCash,    'Retail Cash');
         addG(c.retailGold,   'Retail Gold');
+        add(c.bullionCash,   'Bullion Cash');
+        addG(c.bullionGold,  'Bullion Gold');
+        addG(c.bullionSilver,'Bullion Silver');
         add(c.silverCash,    'Silver Cash');
         addG(c.silverSilver, 'Silver');
         add(c.chitCash,      'Chit');
-        const bals = parts.join('\n') || 'outstanding amount';
-        const text = `Dear customer,\nThis is a gentle reminder that your outstanding balance with us:\n${bals}.\nKindly settle the same at your earliest convenience.\n— Demo Ledger`;
+        const bals = parts.join('\n') || 'No outstanding balance';
+
+        const last5 = transactions
+            .filter(t => t.cid === c.id)
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .slice(0, 5);
+        let txLines = '';
+        if (last5.length > 0) {
+            const lines = last5.map((t, i) => {
+                const amount = t.jama > 0 ? t.jama : t.nave;
+                const label  = t.jama > 0 ? 'jama' : 'nave (balance)';
+                const val    = t.type === 'CASH'
+                    ? `₹${fmt(Math.abs(amount))}`
+                    : `${fmtG(Math.abs(amount))}g`;
+                const cat    = [t.category, t.sub_type].filter(Boolean).join(' ');
+                return `${i + 1}. ${t.date} | ${cat} | ${val} ${label}`;
+            });
+            txLines = `\n\nLast 5 Transactions:\n${lines.join('\n')}`;
+        }
+
+        const text = `Dear customer,\nYour outstanding balance with us:\n${bals}${txLines}`;
         let mobile = (c.mobile || '').replace(/\D/g, '');
         if (!mobile.startsWith('91')) mobile = '91' + mobile;
         return `https://wa.me/${mobile}?text=${encodeURIComponent(text)}`;
@@ -187,6 +213,7 @@ const DuePage = () => {
                         amount: parseFloat(Math.abs(v).toFixed(isGrams ? 3 : 2)), unit });
         };
         if (cat === 'ALL' || cat === 'RETAIL')  { add(c.retailCash,    'Retail',  'Cash',   '₹',       false); add(c.retailGold,    'Retail',  'Gold',   'g Gold',   true); }
+        if (cat === 'ALL' || cat === 'BULLION') { add(c.bullionCash,   'Bullion', 'Cash',   '₹',       false); add(c.bullionGold,   'Bullion', 'Gold',   'g Gold',   true); add(c.bullionSilver, 'Bullion', 'Silver', 'g Silver', true); }
         if (cat === 'ALL' || cat === 'SILVER')  { add(c.silverCash,    'Silver',  'Cash',   '₹',       false); add(c.silverSilver,  'Silver',  'Silver', 'g Silver', true); }
         if (cat === 'ALL' || cat === 'CHIT')    { add(c.chitCash,      'Chit',    'Cash',   '₹',       false); }
         return rows;
@@ -255,9 +282,10 @@ const DuePage = () => {
         else setExcludedIds(new Set(allIds));
     };
 
-    const handleExtend = () => {
+    const handleExtend = async () => {
         if (!extendDate) return;
-        updateCustomerDueDate(extendId, extendDate);
+        try { await updateCustomerDueDate(extendId, extendDate); }
+        catch (error) { alert('Due date not saved: ' + error.message); return; }
         setExtendId(null);
         setExtendDate('');
     };
@@ -285,6 +313,7 @@ const DuePage = () => {
         const addSilv = (val, tag) => { const v = n(val); if (v >  0.0001) youGot.push ({label:`${tag}${fmtG(v)}g Silver`,cls:'tb-silver'}); if (v < -0.0001) youGave.push({label:`${tag}${fmtG(Math.abs(v))}g Silver`,cls:'tb-silver'}); };
 
         if (cat === 'ALL' || cat === 'RETAIL')  { addCash(c.retailCash, 'Retail ');   addGold(c.retailGold, 'Retail '); }
+        if (cat === 'ALL' || cat === 'BULLION') { addCash(c.bullionCash,'Bullion ');  addGold(c.bullionGold,'Bullion '); addSilv(c.bullionSilver,'Bullion '); }
         if (cat === 'ALL' || cat === 'SILVER')  { addCash(c.silverCash, 'Silver ');   addSilv(c.silverSilver,'Silver '); }
         if (cat === 'ALL' || cat === 'CHIT')    { addCash(c.chitCash,   'Chit '); }
         return { youGot, youGave };
@@ -375,6 +404,7 @@ const DuePage = () => {
                 {[
                     { key: 'ALL',     label: 'All',        color: '#6366f1' },
                     { key: 'RETAIL',  label: '🏪 Retail',  color: '#818cf8' },
+                    { key: 'BULLION', label: '🥇 Bullion', color: '#f59e0b' },
                     { key: 'SILVER',  label: '🥈 Silver',  color: '#94a3b8' },
                 ].map(({ key, label, color }) => (
                     <button
@@ -601,11 +631,12 @@ const DuePage = () => {
                     </div>
 
                     {/* Sub-tabs — shown when a specific category is selected */}
-                    {(catTab === 'RETAIL' || catTab === 'SILVER') && (() => {
+                    {(catTab === 'RETAIL' || catTab === 'BULLION' || catTab === 'SILVER') && (() => {
                         const subOpts =
                             catTab === 'RETAIL'  ? [{ key:'ALL', label:'All' }, { key:'CASH', label:'Cash' }, { key:'METAL', label:'Metal (Gold)' }] :
+                            catTab === 'BULLION' ? [{ key:'ALL', label:'All' }, { key:'CASH', label:'Cash' }, { key:'GOLD', label:'Gold' }, { key:'SILVER', label:'Silver' }] :
                           /* SILVER */             [{ key:'ALL', label:'All' }, { key:'CASH', label:'Cash' }, { key:'SILVER', label:'Silver' }];
-                        const activeColor = catTab === 'SILVER' ? '#94a3b8' : '#818cf8';
+                        const activeColor = catTab === 'BULLION' ? '#f59e0b' : catTab === 'SILVER' ? '#94a3b8' : '#818cf8';
                         return (
                             <div style={{ display: 'flex', gap: '0.4rem' }}>
                                 {subOpts.map(({ key, label }) => (

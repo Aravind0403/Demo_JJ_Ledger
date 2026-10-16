@@ -1,28 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, UserCheck, Eye, EyeOff, Loader, ArrowLeft } from 'lucide-react';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext } from '../context/appState';
+import { isLocalMode, LOCAL_PASSCODES } from '../lib/runtime';
 import './Login.css';
-
-// Internal Supabase credentials — implementation detail, never shown in UI.
-// These map each role to a fixed Supabase Auth user. Passcodes the shop uses
-// are stored as hashes in the organizations table and managed from Settings.
-const ROLE_EMAIL = {
-    owner: 'owner@demoledger.com',
-    staff: 'staff@demoledger.com',
-    view:  'view@demoledger.com',
-};
-const ROLE_PASS = {
-    owner: 'owner123',
-    staff: 'staff123',
-    view:  'view123',
-};
-
-// Fallback SHA-256 hashes for default passcodes (used when Supabase unavailable)
-const FALLBACK_HASHES = {
-    owner: '43a0d17178a9d26c9e0fe9a74b0b45e38d32f27aed887a008a54bf6e033bf7b9',
-    staff: '10176e7b7b24d317acfcf8d2064cfd2f24e154f7b5a96603077d5ef813d6a6b6',
-    view:  '656d604dfdba41a262963cce53699bbc56cd7a2c0da1ad5ead45fc49214159d6',
-};
 
 const ROLE_CONFIG = {
     owner: { label: 'Owner', icon: '👑', accent: 'gold',  title: 'Owner Sign In' },
@@ -30,20 +10,20 @@ const ROLE_CONFIG = {
     view:  { label: 'View',  icon: '👁', accent: 'muted', title: 'View Access'   },
 };
 
-const hashPassword = async (text) => {
-    const msgUint8 = new TextEncoder().encode(text);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
-
 const Login = () => {
-    const { login } = useAppContext();
+    const { setAuthSession, authError } = useAppContext();
     const [selectedRole, setSelectedRole] = useState(null);
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [devMode, setDevMode] = useState(false);
+    useEffect(() => {
+        const checkHash = () => setDevMode(isLocalMode && window.location.hash === '#devmode');
+        checkHash();
+        window.addEventListener('hashchange', checkHash);
+        return () => window.removeEventListener('hashchange', checkHash);
+    }, []);
 
     const handleRoleSelect = (role) => {
         setSelectedRole(role);
@@ -62,12 +42,16 @@ const Login = () => {
         e.preventDefault();
         setError('');
         setLoading(true);
-
         try {
-            const success = login(selectedRole, password);
-            if (!success) {
-                setError(`Invalid passcode for ${ROLE_CONFIG[selectedRole].label}. Try ${selectedRole}123`);
+            // Dev/super-admin shortcut
+            if (isLocalMode && devMode && password === 'admin') {
+                setAuthSession({ role: 'super-admin' });
+                return;
             }
+
+            if (LOCAL_PASSCODES[selectedRole] === password) setAuthSession({ role: selectedRole });
+            else setError('Invalid passcode.');
+
         } catch (err) {
             console.error(err);
             setError('Login error: ' + err.message);
@@ -75,6 +59,8 @@ const Login = () => {
             setLoading(false);
         }
     };
+
+    const roleConfig = selectedRole ? ROLE_CONFIG[selectedRole] : null;
 
     return (
         <div className="login-container">
@@ -84,41 +70,51 @@ const Login = () => {
                     <div className="login-icon-wrap">
                         <Lock size={32} className="text-blue" />
                     </div>
-                    <h2>Demo Ledger</h2>
+                    <h2>JJ Ledger Demo</h2>
+                    <p>Cash, gold, silver &amp; chit ledger</p>
+                    {isLocalMode && <p style={{ marginTop: 12, fontSize: '0.8rem', color: '#a5b4fc' }}>Local demo · Data stays in this browser</p>}
                 </div>
 
-                {/* Step 1: Role Selection */}
-                {!selectedRole ? (
-                    <>
-                        <div className="login-step-label">Select your role to continue</div>
+                {isLocalMode && <div style={{ marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+                    Demo passcodes: <strong>owner-local</strong>, <strong>staff-local</strong>, <strong>view-local</strong>
+                </div>}
+                {authError && <div className="login-error" role="alert">{authError}</div>}
+                {/* Step 1: Role selector */}
+                {!selectedRole && (
+                    <div>
+                        <p className="login-step-label">Select your role to continue</p>
                         <div className="role-grid">
-                            {Object.entries(ROLE_CONFIG).map(([role, config]) => (
+                            {Object.entries(ROLE_CONFIG).map(([role, cfg]) => (
                                 <button
                                     key={role}
-                                    className={`role-tile role-tile-${config.accent}`}
+                                    className={`role-tile role-tile-${cfg.accent}`}
                                     onClick={() => handleRoleSelect(role)}
+                                    type="button"
                                 >
-                                    <span className="role-tile-icon">{config.icon}</span>
-                                    <span className="role-tile-label">{config.label}</span>
+                                    <span className="role-tile-icon">{cfg.icon}</span>
+                                    <span className="role-tile-label">{cfg.label}</span>
                                 </button>
                             ))}
                         </div>
-                    </>
-                ) : (
-                    /* Step 2: Passcode input */
-                    <div className="login-step2 animate-slide-in">
+                    </div>
+                )}
+
+                {/* Step 2: Passcode input */}
+                {selectedRole && (
+                    <div>
                         <div className="login-step-header">
-                            <button className="login-back-btn" onClick={handleBack} disabled={loading}>
+                            {<button className="login-back-btn" onClick={handleBack} type="button">
                                 <ArrowLeft size={18} />
-                            </button>
-                            <span className="login-step-title">{ROLE_CONFIG[selectedRole].title}</span>
+                            </button>}
+                            <span className="login-step-title">{roleConfig.title}</span>
                         </div>
 
                         <form onSubmit={handleLogin} className="login-form">
                             <div className="input-group" style={{ position: 'relative' }}>
                                 <input
                                     type={showPassword ? 'text' : 'password'}
-                                    placeholder="Enter Passcode"
+                                    placeholder={isLocalMode ? 'Enter Passcode...' : 'Password'}
+                                    autoComplete="current-password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     autoFocus
@@ -137,7 +133,7 @@ const Login = () => {
                                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
-                            {error && <div className="login-error">{error}</div>}
+                            {error && <div className="login-error" role="alert">{error}</div>}
 
                             <button type="submit" className="login-btn" disabled={loading || !password}>
                                 {loading
@@ -147,8 +143,12 @@ const Login = () => {
                             </button>
                         </form>
 
-                        <p className="login-footer-hint">Use passcode: {selectedRole}123</p>
+                        <p className="login-footer-hint">{isLocalMode ? 'Local demo access' : 'Enter the password provided by your owner.'}</p>
                     </div>
+                )}
+
+                {devMode && (
+                    <div className="dev-banner">Super Admin Mode Active (Pass: admin)</div>
                 )}
             </div>
         </div>

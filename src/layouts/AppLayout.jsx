@@ -1,24 +1,28 @@
 import React, { useState } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Home, User, Settings, Menu, X, Activity, LogOut, BookOpen, PlusCircle } from 'lucide-react';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext } from '../context/appState';
 import './AppLayout.css';
+import { isLocalMode } from '../lib/runtime';
 
 const AppLayout = () => {
     const location = useLocation();
-    const navigate = useNavigate();
-    const { authed, logout } = useAppContext();
+    const { authSession, signOut } = useAppContext();
     const [isMenuOpen,    setIsMenuOpen]    = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
-    const roleName = 'Demo User';
+    const roleName = authSession?.role === 'super-admin' ? 'Super Admin'
+        : authSession?.role === 'owner' ? 'Owner'
+        : authSession?.role === 'staff' ? 'Staff'
+        : authSession?.role === 'view' ? 'View Only'
+        : 'Unknown';
 
     const handleSignOut = async () => {
         setIsProfileOpen(false);
         setIsMenuOpen(false);
-        logout();
+        await signOut();
     };
 
     return (
@@ -28,7 +32,8 @@ const AppLayout = () => {
                 <div className="header-left">
                     <Menu className="header-icon" size={24} onClick={toggleMenu} />
                     <Link to="/" style={{ textDecoration: 'none' }}>
-                        <h1 className="header-title">Demo Ledger</h1>
+                        <h1 className="header-title">JJ Ledger Demo</h1>
+                        {isLocalMode && <span style={{ fontSize: '0.65rem', color: '#a5b4fc' }}>LOCAL DEMO</span>}
                     </Link>
                 </div>
                 <div className="header-right" style={{ position: 'relative' }}>
@@ -99,11 +104,12 @@ const AppLayout = () => {
 
                         {/* Nav links */}
                         {[
-                            { to: '/dashboard',   icon: <Home size={18} />,      label: 'Home' },
+                            { to: '/',            icon: <Home size={18} />,      label: 'Home' },
                             { to: '/customers',   icon: <User size={18} />,      label: 'Customers' },
                             { to: '/transactions',icon: <PlusCircle size={18} />,label: 'Add Transaction' },
                             { to: '/ledger',      icon: <BookOpen size={18} />,  label: 'Ledger' },
                             { to: '/due',         icon: <Activity size={18} />,  label: 'Dues' },
+                            { to: '/settings',    icon: <Settings size={18} />,  label: 'Settings' },
                         ].map(({ to, icon, label }) => (
                             <Link
                                 key={to}
@@ -154,8 +160,8 @@ const AppLayout = () => {
             {/* Bottom Navigation */}
             <nav className="glass-panel app-bottom-nav">
                 <Link
-                    to="/dashboard"
-                    className={`nav-item ${location.pathname === '/dashboard' ? 'active' : ''}`}
+                    to="/"
+                    className={`nav-item ${location.pathname === '/' ? 'active' : ''}`}
                 >
                     <Home size={20} />
                     <span>Home</span>
@@ -187,6 +193,13 @@ const AppLayout = () => {
                 >
                     <Activity size={20} />
                     <span>Dues</span>
+                </Link>
+                <Link
+                    to="/settings"
+                    className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`}
+                >
+                    <Settings size={20} />
+                    <span>Settings</span>
                 </Link>
             </nav>
         </div>

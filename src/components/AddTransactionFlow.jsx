@@ -4,15 +4,16 @@ import {
     CalendarDays, Phone, ArrowRight, ChevronLeft,
     TrendingUp, TrendingDown
 } from 'lucide-react';
-import { useAppContext, getCatBalKey } from '../context/AppContext';
+import { useAppContext } from '../context/appState';
 import ReceiptModal from './ReceiptModal';
-
+import { compressImage, saveLocalPhoto } from '../utils/imageUtils';
 import './TransactionPopup.css';
 import './AddTransactionFlow.css';
 
 // ── Category config ───────────────────────────────────────────────────────────
 const CAT = {
     RETAIL:  { label: 'RETAIL',  color: '#3b82f6', sub: ['CASH', 'METAL'] },
+    BULLION: { label: 'BULLION', color: '#f59e0b', sub: ['GOLD', 'SILVER'] },
     SILVER:  { label: 'SILVER',  color: '#94a3b8', sub: ['CASH', 'SILVER'] },
     CHIT:    { label: 'CHIT',    color: '#10b981', sub: null },
 };
@@ -30,6 +31,8 @@ const CAT = {
 // "gramsIsBalance" → grams ARE the balance amount (only BULLION)
 
 const getTxType = (cat, sub) => {
+    if (cat === 'BULLION' && sub === 'GOLD')   return 'GOLD';
+    if (cat === 'BULLION' && sub === 'SILVER') return 'SILVER';
     if (cat === 'SILVER'  && sub === 'SILVER') return 'SILVER'; // grams-based silver balance
     return 'CASH'; // RETAIL CASH/METAL, SILVER CASH, CHIT — all track ₹
 };
@@ -37,34 +40,39 @@ const getTxType = (cat, sub) => {
 // Show the grams input field?
 const showGrams = (cat, sub) =>
     (cat === 'RETAIL'  && sub === 'METAL')  ||
+    cat === 'BULLION'                       ||
     (cat === 'SILVER'  && sub === 'SILVER');
 
 // Are grams the primary balance amount?
-// SILVER·SILVER tracks grams as the balance.
+// BULLION (gold/silver) and SILVER·SILVER both track grams as the balance.
 const gramsIsBalance = (cat, sub) =>
-    (cat === 'SILVER' && sub === 'SILVER');
+    cat === 'BULLION' || (cat === 'SILVER' && sub === 'SILVER');
 
 const getCatLabel = (cat, sub) => {
     if (cat === 'RETAIL'  && sub === 'CASH')   return 'Retail — Cash';
     if (cat === 'RETAIL'  && sub === 'METAL')  return 'Retail — Metal';
+    if (cat === 'BULLION' && sub === 'GOLD')   return 'Bullion Gold';
+    if (cat === 'BULLION' && sub === 'SILVER') return 'Bullion Silver';
     if (cat === 'SILVER'  && sub === 'CASH')   return 'Silver — Cash';
     if (cat === 'SILVER'  && sub === 'SILVER') return 'Silver — Silver';
     if (cat === 'CHIT')                        return 'Chit Fund';
     return 'New Transaction';
 };
 
-// Grams field label
+// Grams field label — uses metalType for RETAIL/SILVER METAL, subType for BULLION
 const getGramsLabel = (operation, cat, sub, metalType) => {
-    const metal = metalType === 'GOLD' ? 'Gold' : 'Silver';
-    // For SILVER·SILVER, grams = the actual balance. For RETAIL/SILVER CASH, grams = informational only.
-    const note = (cat === 'SILVER' && sub === 'SILVER') ? '' : ' (info only)';
+    const metal = cat === 'BULLION'
+        ? (sub === 'GOLD' ? 'Gold' : 'Silver')
+        : (metalType === 'GOLD' ? 'Gold' : 'Silver');
+    // For BULLION and SILVER·SILVER, grams = the actual balance. For RETAIL/SILVER CASH, grams = informational only.
+    const note = (cat === 'BULLION' || (cat === 'SILVER' && sub === 'SILVER')) ? '' : ' (info only)';
     return operation === 'YOU_GOT'
         ? `${metal} Weight Received${note} (g)`
         : `${metal} Weight Given${note} (g)`;
 };
 
 const getBillLabel = (operation, isGramsBalance) => {
-    // For SILVER·SILVER, bill amount is just a ₹ reference — not the balance
+    // For BULLION, bill amount is just a ₹ reference — not the balance
     if (isGramsBalance) return 'Reference ₹ Value (optional)';
     return operation === 'YOU_GOT' ? 'Bill Amount Received (₹)' : 'Bill Amount Given (₹)';
 };
@@ -72,20 +80,37 @@ const getBillLabel = (operation, isGramsBalance) => {
 const fmt  = (v) => parseFloat(v || 0).toFixed(2);
 const fmtG = (v) => parseFloat(v || 0).toFixed(3);
 
-const genWhatsApp = (customer) => {
+const genWhatsApp = (customer, transactions = []) => {
+    const dir  = (v) => v >= 0 ? 'jama' : 'nave (balance)';
     const cash   = parseFloat(customer.cashBalance   || 0);
     const gold   = parseFloat(customer.goldBalance   || 0);
     const silver = parseFloat(customer.silverBalance || 0);
     const parts  = [];
-    if (cash   !== 0) parts.push(`₹${fmt(Math.abs(cash))}`);
-    if (gold   !== 0) parts.push(`${fmtG(Math.abs(gold))}g gold`);
-    if (silver !== 0) parts.push(`${fmtG(Math.abs(silver))}g silver`);
-    const bal = parts.join(' / ') || '₹0';
-    const due = customer.due_date
-        ? new Date(customer.due_date).toLocaleDateString('en-IN')
-        : 'N/A';
-    const text = `Dear ${customer.name},\nYour outstanding balance at Demo Ledger: ${bal}.\nDue Date: ${due}\n— Demo Ledger`;
-    let mob = customer.mobile;
+    if (cash   !== 0) parts.push(`Cash: ₹${fmt(Math.abs(cash))} ${dir(cash)}`);
+    if (gold   !== 0) parts.push(`Gold: ${fmtG(Math.abs(gold))}g ${dir(gold)}`);
+    if (silver !== 0) parts.push(`Silver: ${fmtG(Math.abs(silver))}g ${dir(silver)}`);
+    const bals = parts.join('\n') || 'No outstanding balance';
+
+    const last5 = transactions
+        .filter(t => t.cid === customer.id)
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 5);
+    let txLines = '';
+    if (last5.length > 0) {
+        const lines = last5.map((t, i) => {
+            const amount = t.jama > 0 ? t.jama : t.nave;
+            const label  = t.jama > 0 ? 'jama' : 'nave (balance)';
+            const val    = t.type === 'CASH'
+                ? `₹${fmt(Math.abs(amount))}`
+                : `${fmtG(Math.abs(amount))}g`;
+            const cat    = [t.category, t.sub_type].filter(Boolean).join(' ');
+            return `${i + 1}. ${t.date} | ${cat} | ${val} ${label}`;
+        });
+        txLines = `\n\nLast 5 Transactions:\n${lines.join('\n')}`;
+    }
+
+    const text = `Dear customer,\nYour outstanding balance with us:\n${bals}${txLines}`;
+    let mob = (customer.mobile || '').replace(/\D/g, '');
     if (!mob.startsWith('91')) mob = '91' + mob;
     return `https://wa.me/${mob}?text=${encodeURIComponent(text)}`;
 };
@@ -146,8 +171,10 @@ const AddTransactionFlow = ({ onClose, presetCustomerId = null }) => {
 
     const getCurrentBalance = () => {
         if (!selectedCustomer) return 0;
-        const balKey = getCatBalKey(form.category, form.subType);
-        return parseFloat(selectedCustomer[balKey] || 0);
+        if (txType === 'CASH')   return parseFloat(selectedCustomer.cashBalance   || 0);
+        if (txType === 'GOLD')   return parseFloat(selectedCustomer.goldBalance   || 0);
+        if (txType === 'SILVER') return parseFloat(selectedCustomer.silverBalance || 0);
+        return 0;
     };
 
     const delta      = form.operation === 'YOU_GOT' ? primaryAmount : -primaryAmount;
@@ -198,12 +225,9 @@ const AddTransactionFlow = ({ onClose, presetCustomerId = null }) => {
         if (!file) return;
         setIsUploading(true);
         try {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const dataUrl = event.target.result;
-                setImages(prev => [...prev, { secure_url: dataUrl }]);
-            };
-            reader.readAsDataURL(file);
+            const blob = await compressImage(file);
+            const data = await saveLocalPhoto(blob);
+            setImages(prev => [...prev, data]);
         } catch (err) {
             alert('Upload failed: ' + err.message);
         } finally {
@@ -245,7 +269,7 @@ const AddTransactionFlow = ({ onClose, presetCustomerId = null }) => {
                 images,
             });
 
-            if (form.whatsapp) window.open(genWhatsApp(selectedCustomer), '_blank');
+            if (form.whatsapp) window.open(genWhatsApp(selectedCustomer, transactions), '_blank');
             setReceiptData({ transaction: entry, customer: selectedCustomer });
         } catch (err) {
             alert('Save failed: ' + err.message);

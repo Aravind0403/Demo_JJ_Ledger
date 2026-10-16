@@ -429,9 +429,52 @@ export const AppProvider = ({ children }) => {
             tx('sd-t39', 'sd-c15','CASH',  'SILVER',  'CASH',    5000,  0,      0,      5000,   day6,'14:00:00','Silver fund payment',      'Owner', now-3*86400000+5*3600000),
         ];
 
+        // Extend the original multi-category examples with settled, payable and
+        // receivable accounts. Recent entries also make Staff/View demos useful.
+        const variants = [
+            ['RETAIL', 'CASH'], ['RETAIL', 'GOLD'], ['BULLION', 'CASH'],
+            ['BULLION', 'GOLD'], ['BULLION', 'SILVER'], ['SILVER', 'CASH'],
+            ['SILVER', 'SILVER'], ['CHIT', 'CASH'],
+        ];
+        const samplePhoto = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320"><rect width="480" height="320" fill="#172033"/><ellipse cx="240" cy="140" rx="95" ry="60" fill="none" stroke="#e6bb55" stroke-width="18"/><text x="240" y="260" text-anchor="middle" fill="white" font-size="20">DEMO PROPERTY — illustration</text></svg>'
+        );
+        for (let i = 16; i <= 50; i++) {
+            const [category, type] = variants[(i - 16) % variants.length];
+            const key = getCatBalKey(category, type);
+            const amount = type === 'CASH' ? 1000 + i * 125.5 : r3(5 + i * 0.375);
+            const returned = i % 3 === 0 ? amount : r3(amount * (i % 3 === 1 ? 0.5 : 1.5));
+            const balance = type === 'CASH' ? r2(amount - returned) : r3(amount - returned);
+            const customer = {
+                id: `sd-c${i}`, name: `Demo ${String(i).padStart(2, '0')} ${category} ${type}`,
+                mobile: String(9800000000 + i), createdAt: d(-i), ...mk(),
+                primary_category: type, due_date: [dueOverdue, today, dueUpcoming, dueFuture, null][i % 5],
+            };
+            customer[key] = balance;
+            customer.cashBalance = customer.retailCash + customer.bullionCash + customer.silverCash + customer.chitCash;
+            customer.goldBalance = customer.retailGold + customer.bullionGold;
+            customer.silverBalance = customer.bullionSilver + customer.silverSilver;
+            customers.push(customer);
+            const timestamp = now - (i % 2 === 0 ? 3600000 : 4 * 86400000) - i * 60000;
+            const date = new Date(timestamp).toISOString().slice(0, 10);
+            const subtype = category === 'RETAIL' && type === 'GOLD' ? 'METAL' : type;
+            const scheme = category === 'CHIT' ? DEFAULT_CHIT_SCHEMES[i % DEFAULT_CHIT_SCHEMES.length] : '';
+            const incoming = tx(`sd-t${transactions.length + 1}`, customer.id, type, category, subtype,
+                amount, 0, 0, amount, date, '10:00:00', 'Demo deposit — fictional record', 'Owner', timestamp, scheme);
+            incoming.due_date = customer.due_date;
+            if (type !== 'CASH' && i % 2 === 1) incoming.images = [{ id: `demo-photo-${i}`, url: samplePhoto, name: 'demo-property.svg' }];
+            transactions.push(incoming);
+            const outgoing = tx(`sd-t${transactions.length + 1}`, customer.id, type, category, subtype,
+                0, returned, amount, balance, date, '11:00:00', balance === 0 ? 'Demo full settlement' : 'Demo withdrawal / advance', 'Staff', timestamp + 60000, scheme);
+            outgoing.due_date = customer.due_date;
+            transactions.push(outgoing);
+        }
+
         setCustomers(customers);
-        setTransactions(transactions.map((t,i) => ({...t, bill_number: `DEMO-${String(i+1).padStart(6,'0')}`})));
-        return 'Dummy data loaded — 15 customers, all 16 transaction combinations seeded!';
+        setDeletedTransactions([]);
+        setChitSchemes(DEFAULT_CHIT_SCHEMES);
+        setTransactions(transactions.map((t,i) => ({...t, bill_number: i >= 39 && i % 5 === 0 ? null : `DEMO-${String(i+1).padStart(6,'0')}`})));
+        return 'Dummy data loaded — 50 customers, 109 transactions, all 16 transaction combinations!';
     };
 
     const signOut = useCallback(() => setAuthSession(null), []);

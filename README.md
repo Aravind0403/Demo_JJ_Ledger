@@ -26,7 +26,7 @@ removes its demo records. There is no cloud backup or cross-device sync.
 - Optional manual bill numbers and ledger search
 - Balances, dues, receipts and Excel exports
 - Compressed property photos stored on the device
-- Role-based demo screens and sample data via Settings → Load Dummy Data
+- Role-based demo screens and 50 sample customers and 109 transactions via Settings → Load Dummy Data
 - Local persistence after refreshing; separate storage keys from OneLedger Pro
 
 ## Hosting

@@ -183,7 +183,7 @@ const Settings = () => {
                             <Database size={16} /> Demo Data
                         </h3>
                         <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                            Populate the app with sample customers, trades, and bills to explore the ledger functions.
+                            Load 50 sample customers and 109 transactions covering all categories, balances, dues, photos and bill searches.
                             This will overwrite existing data.
                         </p>
                         <Button variant="primary" onClick={handleSeed}>

@@ -118,5 +118,21 @@ test('sample data loads and persists', async ({ page }) => {
     JSON.parse(localStorage.getItem('jjledger_demo_customers')).length,
     JSON.parse(localStorage.getItem('jjledger_demo_transactions')).length,
   ]);
-  expect(counts).toEqual([15, 39]);
+  expect(counts).toEqual([50, 109]);
+  const coverage = await page.evaluate(() => {
+    const customers = JSON.parse(localStorage.getItem('jjledger_demo_customers'));
+    const transactions = JSON.parse(localStorage.getItem('jjledger_demo_transactions'));
+    const keys = { RETAIL_CASH:'retailCash', RETAIL_GOLD:'retailGold', BULLION_CASH:'bullionCash', BULLION_GOLD:'bullionGold', BULLION_SILVER:'bullionSilver', SILVER_CASH:'silverCash', SILVER_SILVER:'silverSilver', CHIT_CASH:'chitCash' };
+    return {
+      variants: new Set(transactions.map(t => `${t.category}_${t.type}_${t.direction}`)).size,
+      hasPhoto: transactions.some(t => t.images.length),
+      hasBlankBill: transactions.some(t => !t.bill_number),
+      hasRecent: transactions.some(t => Date.now() - t.createdAt < 86400000),
+      consistent: customers.every(c => Object.entries(keys).every(([pair,key]) => {
+        const total = transactions.filter(t => t.cid === c.id && `${t.category}_${t.type}` === pair).reduce((sum,t) => sum+t.jama-t.nave,0);
+        return Math.abs(total-c[key]) < 0.001;
+      })),
+    };
+  });
+  expect(coverage).toEqual({ variants:16, hasPhoto:true, hasBlankBill:true, hasRecent:true, consistent:true });
 });

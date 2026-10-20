@@ -5,7 +5,7 @@ async function login(page, role = 'Owner') {
   await page.getByRole('button', { name: role, exact: false }).click();
   await page.getByPlaceholder('Enter Passcode...').fill(`${role.toLowerCase()}-local`);
   await page.getByRole('button', { name: 'Sign In', exact: true }).click();
-  await expect(page.locator('.app-header')).toContainText('JJ Ledger Demo');
+  await expect(page.locator('.app-header')).toContainText('Demo Ledger Pro');
 }
 
 for (const role of ['Owner', 'Staff', 'View']) {

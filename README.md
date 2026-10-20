@@ -1,4 +1,4 @@
-# JJ Ledger Demo
+# Demo Ledger Pro
 
 A standalone, browser-only demo of OneLedger Pro. No Supabase, Cloudinary,
 email service, production credentials, or environment variables are required.

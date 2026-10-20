@@ -32,7 +32,7 @@ const AppLayout = () => {
                 <div className="header-left">
                     <Menu className="header-icon" size={24} onClick={toggleMenu} />
                     <Link to="/" style={{ textDecoration: 'none' }}>
-                        <h1 className="header-title">JJ Ledger Demo</h1>
+                        <h1 className="header-title">Demo Ledger Pro</h1>
                         {isLocalMode && <span style={{ fontSize: '0.65rem', color: '#a5b4fc' }}>LOCAL DEMO</span>}
                     </Link>
                 </div>

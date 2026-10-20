@@ -24,7 +24,7 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
         let msg = `Bill: ${transaction.bill_number || "—"}\nDate: ${transaction.date}${transaction.time ? ` ${transaction.time.substring(0,5)}` : ''}\n`;
         msg += `Amount ${isGot ? 'Received ✅' : 'Given 🔴'}: *${amt}*\n`;
         if (transaction.description) msg += `Note: ${transaction.description}\n`;
-        msg += `\n_JJ Ledger Demo_`;
+        msg += `\n_Demo Ledger Pro_`;
 
         // Open WhatsApp directly with customer's number
         const phone = customer.mobile?.replace(/\D/g, '');
@@ -40,9 +40,9 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
         const amt   = isCash
             ? `₹${fmt(isGot ? transaction.jama : transaction.nave)}`
             : `${fmtG(isGot ? transaction.jama : transaction.nave)}g`;
-        let msg = `Bill: ${transaction.bill_number || "—"}\nDate: ${transaction.date}${transaction.time ? ` ${transaction.time.substring(0,5)}` : ''}\nAmount ${isGot ? 'Received' : 'Given'}: ${amt}\n_JJ Ledger Demo_`;
+        let msg = `Bill: ${transaction.bill_number || "—"}\nDate: ${transaction.date}${transaction.time ? ` ${transaction.time.substring(0,5)}` : ''}\nAmount ${isGot ? 'Received' : 'Given'}: ${amt}\n_Demo Ledger Pro_`;
         try {
-            const shareData = { title: 'JJ Ledger Demo Receipt', text: msg };
+            const shareData = { title: 'Demo Ledger Pro Receipt', text: msg };
             if (transaction.images?.length > 0) {
                 try {
                     const resp = await fetch(await resolveReceiptUrl(transaction.images[0]));
@@ -63,7 +63,7 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
         printWindow.document.write(`
             <html>
             <head>
-                <title>Receipt - JJ Ledger Demo</title>
+                <title>Receipt - Demo Ledger Pro</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
                     body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px; color: #1a1a1a; }
@@ -112,7 +112,7 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
                 <div ref={receiptRef}>
                     <div className="receipt" style={{ maxWidth: '350px', margin: '0 auto', border: '2px solid rgba(255,255,255,0.15)', padding: '20px', borderRadius: '12px', background: 'rgba(15,23,42,0.8)' }}>
                         <div style={{ textAlign: 'center', borderBottom: '2px dashed rgba(255,255,255,0.1)', paddingBottom: '12px', marginBottom: '12px' }}>
-                            <h2 style={{ fontSize: '1.3rem', letterSpacing: '1px', marginBottom: '2px', color: 'var(--accent-gold, #fbbf24)' }}>JJ Ledger Demo</h2>
+                            <h2 style={{ fontSize: '1.3rem', letterSpacing: '1px', marginBottom: '2px', color: 'var(--accent-gold, #fbbf24)' }}>Demo Ledger Pro</h2>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Transaction Receipt</p>
                         </div>
 
@@ -203,7 +203,7 @@ const ReceiptModal = ({ transaction, customer, onClose }) => {
 
                         <div style={{ textAlign: 'center', borderTop: '2px dashed rgba(255,255,255,0.1)', paddingTop: '10px', marginTop: '10px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                             Thank you for your business<br />
-                            JJ Ledger Demo • JJ Ledger Demo
+                            Demo Ledger Pro
                         </div>
                     </div>
                 </div>

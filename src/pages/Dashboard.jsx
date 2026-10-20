@@ -16,7 +16,7 @@ const GRAMS_BAL_KEYS = new Set(['retailGold', 'bullionGold', 'bullionSilver', 's
 // source:'tx'  → aggregate jama−nave from transactions filtered by category+subType
 //                (used for RETAIL·METAL because getTxType returns 'CASH' for it,
 //                 so the grams net must come from transactions, not a balance field)
-// Configure JJ Ledger key accounts after business-specific setup.
+// Configure Demo Ledger Pro key accounts after business-specific setup.
 const KEY_ACCOUNTS = { retail: [], bullion: [], silver: [] };
 
 /* ── Live Ticker ──────────────────────────────────────────────────────────── */
@@ -28,7 +28,7 @@ const Ticker = ({ totalCash, totalGold, totalSilver }) => {
         { icon: '💵', label: 'Cash',         value: `${cashSign}₹${fmt(Math.abs(totalCash))}`, color: cashColor },
         { icon: '🥇', label: 'Gold',         value: `${fmtG(totalGold)}g`,                     color: '#fbbf24' },
         { icon: '🥈', label: 'Silver',       value: `${fmtG(totalSilver)}g`,                   color: '#94a3b8' },
-        { icon: '📊', label: 'JJ Ledger Demo', value: '',                                        color: '#6366f1' },
+        { icon: '📊', label: 'Demo Ledger Pro', value: '',                                        color: '#6366f1' },
     ];
     const allItems = [...items, ...items, ...items];
 

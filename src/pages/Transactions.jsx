@@ -340,7 +340,7 @@ const Transactions = () => {
         const ws2 = XLSX.utils.json_to_sheet(sheet2);
         XLSX.utils.book_append_sheet(wb, ws2, 'Gold-Silver Grams');
         const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        saveAs(new Blob([buf], { type: 'application/octet-stream' }), `JJ Ledger_Ledger_${today}.xlsx`);
+        saveAs(new Blob([buf], { type: 'application/octet-stream' }), `Demo Ledger Pro_Ledger_${today}.xlsx`);
     };
 
     // ── Customer Statement Export ──────────────────────────────────────────────

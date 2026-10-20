@@ -169,7 +169,7 @@ const Customers = () => {
         XLSX.utils.book_append_sheet(wb, ws, 'Customers');
         const today = new Date().toISOString().slice(0, 10);
         const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        saveAs(new Blob([buf], { type: 'application/octet-stream' }), `JJ Ledger_Customers_${today}.xlsx`);
+        saveAs(new Blob([buf], { type: 'application/octet-stream' }), `Demo Ledger Pro_Customers_${today}.xlsx`);
         toast.success('Exported successfully.');
     };
 

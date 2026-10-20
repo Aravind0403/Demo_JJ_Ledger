@@ -70,7 +70,7 @@ const Login = () => {
                     <div className="login-icon-wrap">
                         <Lock size={32} className="text-blue" />
                     </div>
-                    <h2>JJ Ledger Demo</h2>
+                    <h2>Demo Ledger Pro</h2>
                     <p>Cash, gold, silver &amp; chit ledger</p>
                     {isLocalMode && <p style={{ marginTop: 12, fontSize: '0.8rem', color: '#a5b4fc' }}>Local demo · Data stays in this browser</p>}
                 </div>

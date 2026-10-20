@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['jjledger_demo.svg'],
       manifest: {
-        name: 'JJ Ledger Demo',
-        short_name: 'JJ Ledger',
+        name: 'Demo Ledger Pro',
+        short_name: 'Demo Ledger Pro',
         description: 'Customer cash, gold, silver and chit ledger',
         theme_color: '#0f172a',
         background_color: '#070c18',

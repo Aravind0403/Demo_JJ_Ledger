@@ -20,7 +20,7 @@ export function editTransaction({ transactions, deletedTransactions, customers, 
     if (!Number.isFinite(amount) || amount <= 0 || amount > 999999999999 || Math.abs(amount - round(amount, old.type)) > 1e-7) {
         throw new Error(`Enter an amount above zero with up to ${precision} decimal places.`);
     }
-    if (!['IN', 'OUT'].includes(changes.direction)) throw new Error('Choose You Got or You Gave.');
+    if (!['IN', 'OUT'].includes(changes.direction)) throw new Error('Choose You Got (Jama) or You Gave (Nave).');
     const bill = changes.bill_number?.trim().toUpperCase() || null;
     if (bill && bill.length > 64) throw new Error('Bill number must be 64 characters or fewer.');
     if (bill && [...transactions, ...deletedTransactions].some(t => t.id !== id && t.bill_number?.toUpperCase() === bill)) {

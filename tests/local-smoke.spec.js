@@ -136,3 +136,45 @@ test('sample data loads and persists', async ({ page }) => {
   });
   expect(coverage).toEqual({ variants:16, hasPhoto:true, hasBlankBill:true, hasRecent:true, consistent:true });
 });
+
+test('owner edits a transaction, sees corrected balances/history; staff and view have no edit', async ({ page }) => {
+  await login(page);
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Load Dummy Data' }).click();
+  await page.goto('/ledger');
+  await page.getByRole('button', { name:'Global', exact:true }).click();
+  const row = page.locator('tbody tr').filter({hasText:'Cash deposit'}).filter({hasText:'Ramesh Kumar'});
+  await row.getByRole('button', {name:'Edit',exact:true}).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await page.setViewportSize({width:390,height:844});
+  await expect(dialog.getByRole('button', {name:'Save correction'})).toBeInViewport();
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.setViewportSize({width:1280,height:900});
+  await dialog.getByLabel('Amount (₹)', {exact:true}).fill('18000');
+  await expect(dialog.locator('.tx-edit-preview')).toContainText('10,000.00');
+  await dialog.getByLabel('Bill number (optional)').fill('EDIT-001');
+  await dialog.getByLabel('Reason for correction').fill('Corrected amount from paper bill');
+  await dialog.getByRole('button', {name:'Save correction'}).click();
+  await expect(page.getByRole('status')).toContainText('Correction saved');
+  await page.reload();
+  const data = await page.evaluate(() => ({customers:JSON.parse(localStorage.getItem('jjledger_demo_customers')),transactions:JSON.parse(localStorage.getItem('jjledger_demo_transactions'))}));
+  expect(data.customers.find(c => c.id === 'sd-c1').retailCash).toBe(10000);
+  expect(data.transactions.find(t => t.id === 'sd-t2').currentBalance).toBe(18000);
+  expect(data.transactions.find(t => t.id === 'sd-t2').newBalance).toBe(10000);
+  expect(data.transactions.find(t => t.id === 'sd-t1').editHistory).toHaveLength(1);
+  await page.getByRole('button', {name:'Global',exact:true}).click();
+  await page.getByLabel('Bill Number', {exact:true}).fill('EDIT-001');
+  await page.locator('tbody tr').getByRole('button', {name:'Edit',exact:true}).click();
+  await dialog.getByText('Correction history (1)').click();
+  await expect(dialog).toContainText('Corrected amount from paper bill');
+  await dialog.getByLabel('Amount (₹)', {exact:true}).fill('500');
+  await dialog.getByRole('button', {name:'Cancel',exact:true}).click();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('jjledger_demo_transactions')).find(t => t.id === 'sd-t1').jama)).toBe(18000);
+  for (const role of ['staff','view']) {
+    await page.evaluate(role => localStorage.setItem('jjledger_demo_auth',JSON.stringify({role})),role);
+    await page.reload();
+    await page.getByRole('button', {name:'Global',exact:true}).click();
+    await expect(page.getByRole('button', {name:'Edit',exact:true})).toHaveCount(0);
+  }
+});

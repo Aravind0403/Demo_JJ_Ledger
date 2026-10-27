@@ -171,10 +171,14 @@ test('owner edits a transaction, sees corrected balances/history; staff and view
   await dialog.getByLabel('Amount (₹)', {exact:true}).fill('500');
   await dialog.getByRole('button', {name:'Cancel',exact:true}).click();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('jjledger_demo_transactions')).find(t => t.id === 'sd-t1').jama)).toBe(18000);
+  await page.getByRole('button', {name:'Correction history',exact:true}).click();
+  await expect(page.locator('.correction-card')).toContainText('Corrected amount from paper bill');
+  await expect(page.locator('.correction-card')).toContainText('18000');
   for (const role of ['staff','view']) {
     await page.evaluate(role => localStorage.setItem('jjledger_demo_auth',JSON.stringify({role})),role);
     await page.reload();
     await page.getByRole('button', {name:'Global',exact:true}).click();
     await expect(page.getByRole('button', {name:'Edit',exact:true})).toHaveCount(0);
+    await expect(page.getByRole('button', {name:'Correction history',exact:true})).toHaveCount(0);
   }
 });

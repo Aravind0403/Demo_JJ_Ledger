@@ -42,6 +42,7 @@ No external-service keys are needed. Do not point the production ledger project 
 ### Transaction editing preview (feature/transaction-edit-demo)
 
 In the local demo, Owner → Ledger → Global (or select a customer) → Edit.
+Owner → Ledger → Correction history shows all local corrections, newest first, including deleted transactions (50 per page).
 Correct the amount/weight, direction, optional bill number, bill amount, date or
 notes. A reason is required. The dialog previews the customer's balance and
 retains before/after values in Correction history. Customer, category, type,

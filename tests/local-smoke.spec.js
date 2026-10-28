@@ -182,3 +182,40 @@ test('owner edits a transaction, sees corrected balances/history; staff and view
     await expect(page.getByRole('button', {name:'Correction history',exact:true})).toHaveCount(0);
   }
 });
+
+test('owner corrects retail, bullion, silver and chit subcategories', async ({page}) => {
+  await login(page);
+  await page.goto('/settings');
+  await page.getByRole('button', {name:'Load Dummy Data'}).click();
+  const cases = [
+    ['sd-t1','METAL',null],
+    ['sd-t7','SILVER','4.125'],
+    ['sd-t11','SILVER','3.125'],
+    ['sd-t15','DIWALI FUND',null],
+  ];
+  for (const [id,sub,amount] of cases) {
+    const bill = await page.evaluate(id => JSON.parse(localStorage.getItem('jjledger_demo_transactions')).find(t => t.id === id).bill_number,id);
+    await page.goto('/ledger');
+    await page.getByRole('button',{name:'Global',exact:true}).click();
+    await page.getByLabel('Bill Number',{exact:true}).fill(bill);
+    await page.locator('tbody tr').getByRole('button',{name:'Edit',exact:true}).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('combobox', {name: id === 'sd-t15' ? 'Chit scheme' : 'Subcategory', exact:true}).selectOption(sub);
+    if (amount) {
+      await expect(dialog.getByLabel('Weight (g)',{exact:true})).toHaveValue('');
+      await dialog.getByLabel('Weight (g)',{exact:true}).fill(amount);
+    }
+    if (id === 'sd-t1') await dialog.getByLabel('Property weight (g)').fill('2.125');
+    await dialog.getByLabel('Reason for correction').fill('Wrong subcategory selected');
+    await dialog.getByRole('button',{name:'Save correction'}).click();
+    await expect(dialog).not.toBeVisible();
+    await page.reload();
+    const tx = await page.evaluate(id => JSON.parse(localStorage.getItem('jjledger_demo_transactions')).find(t => t.id === id),id);
+    expect(id === 'sd-t15' ? tx.chit_scheme : tx.sub_type).toBe(sub);
+    expect(tx.editHistory.at(-1).reason).toBe('Wrong subcategory selected');
+  }
+  await page.getByRole('button',{name:'Correction history',exact:true}).click();
+  await expect(page.locator('.correction-card')).toHaveCount(4);
+  await expect(page.locator('.correction-list')).toContainText('Chit scheme');
+  await expect(page.locator('.correction-list')).toContainText('Subcategory');
+});

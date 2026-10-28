@@ -53,3 +53,46 @@ test('metadata-only edit leaves balances unchanged and allows blank bill', () =>
     assert.equal(result.transactions[1].newBalance,80);
     assert.equal(result.transactions[0].bill_number,null);
 });
+
+test('moving silver cash to silver weight restores source and destination opening balances', () => {
+    const input = setup('SILVER', 'CASH', 'silverCash');
+    input.transactions[0].sub_type = 'CASH';
+    input.transactions.push({...input.transactions[0],id:'metal',type:'SILVER',sub_type:'SILVER',jama:5,nave:0,createdAt:3});
+    Object.assign(input.customers[0], {silverSilver:7,silverBalance:7});
+    const result = editTransaction({...input,changes:{...input.changes,sub_type:'SILVER',amount:'2.125'}});
+    assert.equal(result.customers[0].silverCash,-20);
+    assert.equal(result.customers[0].cashBalance,-20);
+    assert.equal(result.customers[0].silverSilver,9.125);
+    assert.equal(result.customers[0].silverBalance,9.125);
+    assert.equal(result.transactions[1].currentBalance,10);
+    assert.equal(result.transactions[1].newBalance,-20);
+    assert.equal(result.transactions[0].currentBalance,2);
+    assert.equal(result.transactions[2].currentBalance,4.125);
+    assert.equal(result.transactions[0].editHistory[0].before.type,'CASH');
+    assert.equal(result.transactions[0].editHistory[0].after.type,'SILVER');
+    const back = editTransaction({...input,...result,expectedRevision:1,changes:{...input.changes,sub_type:'CASH',amount:100}});
+    assert.equal(back.customers[0].silverCash,80);
+    assert.equal(back.customers[0].silverSilver,7);
+    assert.equal(back.transactions[2].currentBalance,2);
+});
+
+test('retail cash to metal keeps cash accounting and records property weight', () => {
+    const input = setup(); input.transactions[0].sub_type='CASH';
+    const result = editTransaction({...input,changes:{...input.changes,amount:100,sub_type:'METAL',grams:'2.125',metal_type:'GOLD'}});
+    assert.equal(result.customers[0].retailCash,80);
+    assert.equal(result.transactions[0].type,'CASH');
+    assert.equal(result.transactions[0].grams,2.125);
+    assert.equal(result.transactions[0].sub_type,'METAL');
+});
+
+test('bullion gold to silver and chit scheme corrections', () => {
+    const input = setup('BULLION','GOLD','bullionGold'); input.transactions[0].sub_type='GOLD';
+    const result = editTransaction({...input,changes:{...input.changes,sub_type:'SILVER',amount:4}});
+    assert.equal(result.customers[0].bullionGold,-20);
+    assert.equal(result.customers[0].bullionSilver,4);
+    const chit = setup('CHIT','CASH','chitCash'); chit.transactions[0].chit_scheme='CHIT';
+    const changed = editTransaction({...chit,changes:{...chit.changes,amount:100,chit_scheme:'DIWALI FUND'}});
+    assert.equal(changed.customers[0].chitCash,80);
+    assert.equal(changed.transactions[0].editHistory[0].after.chit_scheme,'DIWALI FUND');
+    assert.throws(() => editTransaction({...input,changes:{...input.changes,sub_type:'METAL'}}),/subcategory/);
+});

@@ -3,7 +3,7 @@ import { useAppContext } from '../context/appState';
 import './CorrectionHistory.css';
 
 const PAGE_SIZE = 50;
-const fields = { jama: 'You Got (Jama)', nave: 'You Gave (Nave)', bill_number: 'Bill number', bill_amount: 'Bill amount (₹)', date: 'Date', description: 'Notes' };
+const fields = { type: 'Balance unit', sub_type: 'Subcategory', chit_scheme: 'Chit scheme', metal_type: 'Metal', grams: 'Weight (g)', jama: 'You Got (Jama)', nave: 'You Gave (Nave)', bill_number: 'Bill number', bill_amount: 'Bill amount (₹)', date: 'Date', description: 'Notes' };
 const display = value => value === null || value === undefined || value === '' ? '—' : String(value);
 export default function CorrectionHistory() {
     const { transactions, deletedTransactions, customers } = useAppContext();
@@ -18,7 +18,7 @@ export default function CorrectionHistory() {
         {source.length === 0 ? <p>No corrections recorded yet.</p> : <div className="correction-list">{source.slice(0, PAGE_SIZE).map(entry => {
             const tx = txMap.get(entry.transactionId);
             return <article className="correction-card" key={entry.id}>
-                <header><div><strong>{customerMap.get(tx?.cid) || 'Customer unavailable'}</strong><p>{tx?.category} · {tx?.type}{tx?.type === 'CASH' ? ' (₹)' : ' (g)'} · Bill {entry.after.bill_number || tx?.bill_number || '—'}{tx?.deleted_at && <span className="correction-deleted"> · Deleted transaction</span>}</p></div><time dateTime={entry.at}>{new Date(entry.at).toLocaleString()}</time></header>
+                <header><div><strong>{customerMap.get(tx?.cid) || 'Customer unavailable'}</strong><p>{tx?.category} · {entry.after.sub_type || tx?.sub_type} · {(entry.after.type || tx?.type) === 'CASH' ? '₹' : 'g'} · Bill {entry.after.bill_number || tx?.bill_number || '—'}{tx?.deleted_at && <span className="correction-deleted"> · Deleted transaction</span>}</p></div><time dateTime={entry.at}>{new Date(entry.at).toLocaleString()}</time></header>
                 <div className="correction-table-wrap"><table><thead><tr><th>Detail</th><th>Before</th><th>After</th></tr></thead><tbody>{Object.entries(fields).filter(([key]) => entry.before[key] !== entry.after[key]).map(([key, label]) => <tr key={key}><th>{label}</th><td>{display(entry.before[key])}</td><td>{display(entry.after[key])}</td></tr>)}</tbody></table></div>
                 <p><strong>Reason:</strong> {entry.reason}</p><p><strong>Changed by:</strong> {entry.by}</p>
                 {entry.accountId && <details><summary>Account reference</summary><small>{entry.accountId}</small></details>}
